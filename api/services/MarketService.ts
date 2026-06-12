@@ -43,14 +43,33 @@ export class MarketService {
 
     let itemName = '';
     let itemRarity = '';
+    let listingType: ListingType = request.type;
 
-    if (request.type === 'intel_scroll') {
+    if (!listingType) {
+      const scroll = store.getScrolls(orgId).find(s => s.id === request.itemId);
+      if (scroll) listingType = 'intel_scroll';
+      const spy = store.getSpy(request.itemId);
+      if (spy && spy.organizationId === orgId) listingType = 'spy_contract';
+    }
+    if (!listingType) throw new Error('无法识别上架物品类型');
+
+    if (listingType === 'intel_scroll') {
       const scroll = store.getScrolls(orgId).find(s => s.id === request.itemId);
       if (!scroll) throw new Error('情报卷轴不存在');
       if (scroll.organizationId !== orgId) throw new Error('卷轴不属于你的组织');
+
+      const orgSpies = store.getSpies(orgId);
+      for (const spy of orgSpies) {
+        if (spy.equippedScrolls.includes(request.itemId)) {
+          store.updateSpy(spy.id, {
+            equippedScrolls: spy.equippedScrolls.filter(id => id !== request.itemId)
+          });
+        }
+      }
+
       itemName = scroll.name;
       itemRarity = scroll.rarity;
-    } else if (request.type === 'spy_contract') {
+    } else if (listingType === 'spy_contract') {
       const spy = store.getSpy(request.itemId);
       if (!spy || spy.organizationId !== orgId) throw new Error('间谍不存在');
       if (spy.status !== 'idle') throw new Error('该间谍正在执行任务，无法出售');
@@ -64,7 +83,7 @@ export class MarketService {
       id: uuidv4(),
       sellerId: orgId,
       sellerName: orgName,
-      type: request.type,
+      type: listingType,
       itemId: request.itemId,
       itemName,
       itemRarity,
@@ -101,6 +120,15 @@ export class MarketService {
 
     if (listing.type === 'intel_scroll') {
       store.updateScrollOwner(listing.itemId, buyerOrgId);
+
+      const sellerSpies = store.getSpies(listing.sellerId);
+      for (const spy of sellerSpies) {
+        if (spy.equippedScrolls.includes(listing.itemId)) {
+          store.updateSpy(spy.id, {
+            equippedScrolls: spy.equippedScrolls.filter(id => id !== listing.itemId)
+          });
+        }
+      }
     } else if (listing.type === 'spy_contract') {
       store.updateSpy(listing.itemId, { organizationId: buyerOrgId, status: 'idle' });
     }

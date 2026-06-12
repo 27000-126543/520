@@ -251,12 +251,15 @@ export class MissionEngine {
     });
 
     let rewardScrolls: IntelScroll[] = [];
+    let resultIntelPoints = 0;
+    let resultReputation = 0;
+    let resultExposureRisk = 0;
 
     if (success) {
-      const pointsReward = Math.floor(mission.rewards.intelPoints * (perfection / 100));
-      const reputationReward = Math.floor(mission.rewards.reputation * (perfection / 100));
-      organizationService.addIntelPoints(execution.organizationId, pointsReward);
-      organizationService.updateReputation(execution.organizationId, reputationReward);
+      resultIntelPoints = Math.floor(mission.rewards.intelPoints * (perfection / 100));
+      resultReputation = Math.floor(mission.rewards.reputation * (perfection / 100));
+      organizationService.addIntelPoints(execution.organizationId, resultIntelPoints);
+      organizationService.updateReputation(execution.organizationId, resultReputation);
       rewardScrolls = store.distributeMissionRewards(
         execution.organizationId,
         mission.rewards,
@@ -277,9 +280,22 @@ export class MissionEngine {
         }
       }
     } else {
-      organizationService.updateReputation(execution.organizationId, -mission.penalties.reputationLoss);
-      organizationService.updateExposureRisk(execution.organizationId, mission.penalties.exposureIncrease);
+      resultReputation = -mission.penalties.reputationLoss;
+      resultExposureRisk = mission.penalties.exposureIncrease;
+      organizationService.updateReputation(execution.organizationId, resultReputation);
+      organizationService.updateExposureRisk(execution.organizationId, resultExposureRisk);
     }
+
+    store.updateExecution(executionId, {
+      result: {
+        success,
+        perfection,
+        intelPoints: resultIntelPoints,
+        reputation: resultReputation,
+        exposureRisk: resultExposureRisk,
+        scrolls: rewardScrolls.map(s => ({ id: s.id, name: s.name, rarity: s.rarity }))
+      }
+    });
 
     if (this.io) {
       this.io.to(`execution:${executionId}`).emit('missionComplete', {
@@ -288,10 +304,10 @@ export class MissionEngine {
         missionTitle: mission.title,
         success,
         perfection,
-        intelPoints: success ? Math.floor(mission.rewards.intelPoints * (perfection / 100)) : 0,
-        reputation: success ? Math.floor(mission.rewards.reputation * (perfection / 100)) : -mission.penalties.reputationLoss,
+        intelPoints: resultIntelPoints,
+        reputation: resultReputation,
         scrolls: rewardScrolls.map(s => ({ id: s.id, name: s.name, rarity: s.rarity })),
-        exposureRisk: success ? 0 : mission.penalties.exposureIncrease
+        exposureRisk: resultExposureRisk
       });
     }
   }

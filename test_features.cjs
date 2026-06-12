@@ -104,6 +104,9 @@ async function run() {
   console.log('  我的公会:', res.data?.name || '无');
 
   // 11. 测试装备卷轴（先卸下再装备）
+  let listingScrollId = null;
+  let sellerSpyId = null;
+  let createdListing = null;
   if (spy && scroll) {
     console.log('\n=== 11. 卷轴装备/卸下测试 ===');
     const scrollEquipped = spy.equippedScrolls.includes(scroll.id);
@@ -120,10 +123,33 @@ async function run() {
     if (res.success) {
       console.log('  装备后卷轴数:', res.data?.equippedScrolls?.length);
     }
+
+    // 11.5 装备卷轴后自动上架测试
+    console.log('\n=== 11.5 装备卷轴后自动上架测试 ===');
+    listingScrollId = scroll.id;
+    sellerSpyId = spy.id;
+    console.log('  装备卷轴ID:', listingScrollId, '到间谍:', sellerSpyId);
+
+    res = await request('/market/listings', { ...auth, method: 'POST' }, {
+      itemId: listingScrollId,
+      price: 500
+    });
+    console.log('  创建上架:', res.success ? '✅ 成功' : '❌ 失败 ' + (res.error || ''));
+    if (res.success) {
+      createdListing = res.data;
+      console.log('  上架商品ID:', createdListing?.id);
+    }
+
+    console.log('  获取间谍详情验证自动卸下...');
+    res = await request(`/spies/${sellerSpyId}`, auth);
+    const spyAfterListing = res.data;
+    const stillEquipped = spyAfterListing?.equippedScrolls?.includes(listingScrollId);
+    console.log('  间谍仍装备该卷轴:', stillEquipped ? '❌ 是（应该自动卸下）' : '✅ 否（已自动卸下）');
   }
 
-  // 12. 测试购买默认商品
-  if (listing) {
+  // 12. 测试购买默认商品（优先使用新创建的上架商品）
+  const listingToBuy = createdListing || listing;
+  if (listingToBuy) {
     // 用第二个账号测试购买
     console.log('\n=== 12. 注册测试账号 ===');
     const rand = Math.floor(Math.random() * 99999);
@@ -144,8 +170,8 @@ async function run() {
       console.log('  创建:', res.success ? '✅ 成功' : '❌ 失败 ' + (res.error || ''));
 
       if (res.success) {
-        console.log('\n=== 14. 购买默认商品 ===');
-        res = await request(`/market/listings/${listing.id}/buy`, { ...auth2, method: 'POST' });
+        console.log('\n=== 14. 购买商品 ===');
+        res = await request(`/market/listings/${listingToBuy.id}/buy`, { ...auth2, method: 'POST' });
         console.log('  购买:', res.success ? '✅ 成功' : '❌ 失败 ' + (res.error || ''));
 
         if (res.success) {
@@ -156,11 +182,29 @@ async function run() {
         console.log('\n=== 15. 验证买家库存 ===');
         res = await request('/market/scrolls', auth2);
         const buyerScrollCount = res.data?.length || 0;
+        const buyerScrolls = res.data || [];
         console.log('  买家卷轴数:', buyerScrollCount, buyerScrollCount > 5 ? '✅ 增加了' : '');
 
         console.log('\n=== 16. 验证成交记录 ===');
         res = await request('/market/histories', auth);
         console.log('  成交记录数:', res.data?.length || 0, (res.data?.length || 0) > 0 ? '✅ 有记录' : '');
+
+        // 16.5 验证卖家间谍已卸下
+        if (sellerSpyId && listingScrollId) {
+          console.log('\n=== 16.5 验证卖家间谍已卸下 ===');
+          res = await request('/spies', auth);
+          const sellerSpies = res.data || [];
+          const targetSpy = sellerSpies.find(s => s.id === sellerSpyId);
+          if (targetSpy) {
+            const stillHasScroll = targetSpy.equippedScrolls?.includes(listingScrollId);
+            console.log('  卖家间谍仍装备该卷轴:', stillHasScroll ? '❌ 是' : '✅ 否（已卸下）');
+          } else {
+            console.log('  未找到目标间谍');
+          }
+
+          const buyerHasScroll = buyerScrolls.some(s => s.id === listingScrollId || s.id === listingToBuy.itemId);
+          console.log('  买家库存包含该卷轴:', buyerHasScroll ? '✅ 是' : '❌ 否');
+        }
 
         console.log('\n=== 17. 验证价格走势变化 ===');
         res = await request('/market/price-trends', auth);
@@ -193,6 +237,25 @@ async function run() {
     (res.data || []).slice(0, 3).forEach(r => {
       console.log(`    ${r.orgName}: ${r.amount} 贡献`);
     });
+  }
+
+  // 21. 任务执行记录奖励验证
+  console.log('\n=== 21. 任务执行记录奖励验证 ===');
+  res = await request('/missions/executions', auth);
+  const executions = res.data;
+  const isArray = Array.isArray(executions);
+  console.log('  返回数据是数组:', isArray ? '✅ 是' : '❌ 否');
+  if (isArray) {
+    console.log('  执行记录数:', executions.length);
+    const completedWithScrolls = executions.filter(e => e.result?.scrolls);
+    if (completedWithScrolls.length > 0) {
+      console.log('  含卷轴奖励的已完成任务数:', completedWithScrolls.length, '✅');
+      completedWithScrolls.slice(0, 2).forEach(e => {
+        console.log(`    - ${e.missionTitle || e.missionId}: 卷轴 ${e.result.scrolls.join(', ')}`);
+      });
+    } else {
+      console.log('  暂无含卷轴奖励的已完成任务');
+    }
   }
 
   console.log('\n🎉 全部测试完成！\n');

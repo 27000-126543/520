@@ -14,7 +14,7 @@ import {
   Award, ScrollText
 } from 'lucide-react';
 
-type MissionTab = 'available' | 'active';
+type MissionTab = 'available' | 'active' | 'history';
 type TypeFilter = 'all' | 'assassinate' | 'steal' | 'infiltrate';
 type DifficultyFilter = 'all' | '1' | '2' | '3' | '4' | '5';
 
@@ -91,6 +91,7 @@ export const MissionsPage = () => {
   });
 
   const activeExecutions = executions.filter(e => e.status === 'in_progress');
+  const historyExecutions = executions.filter(e => e.status === 'completed' || e.status === 'failed');
   const idleSpies = spies.filter(s => s.status === 'idle');
 
   const calculateSuccessRate = (mission: Mission, spyIds: string[]) => {
@@ -779,6 +780,16 @@ export const MissionsPage = () => {
           >
             进行中 ({activeExecutions.length})
           </button>
+          <button
+            onClick={() => setActiveTab('history')}
+            className={`px-6 py-2 rounded-md text-sm font-medium transition-all ${
+              activeTab === 'history'
+                ? 'bg-gradient-to-r from-gold-500 to-gold-600 text-arcane-900'
+                : 'text-arcane-400 hover:text-gold-400'
+            }`}
+          >
+            执行记录 ({historyExecutions.length})
+          </button>
         </div>
 
         {activeTab === 'available' && (
@@ -917,7 +928,7 @@ export const MissionsPage = () => {
             <p className="text-arcane-400">请稍后再来查看新的任务</p>
           </ArcaneCard>
         )
-      ) : (
+      ) : activeTab === 'active' ? (
         activeExecutions.length > 0 ? (
           <div className="space-y-4">
             {activeExecutions.map((execution) => {
@@ -996,7 +1007,145 @@ export const MissionsPage = () => {
             </ArcaneButton>
           </ArcaneCard>
         )
-      )}
+      ) : activeTab === 'history' ? (
+        historyExecutions.length > 0 ? (
+          <div className="space-y-4">
+            {historyExecutions.map((execution) => {
+              const mission = getMissionById(execution.missionId);
+              const config = mission ? typeConfig[mission.type] : null;
+              const isSuccess = execution.status === 'completed';
+              const result = execution.result;
+
+              return (
+                <motion.div
+                  key={execution.id}
+                  whileHover={{ scale: 1.01 }}
+                  className="cursor-default"
+                >
+                  <ArcaneCard className={`p-5 bg-gradient-to-br ${config?.bg || 'from-arcane-900'} to-arcane-900/50`}>
+                    <div className="flex items-start justify-between gap-6">
+                      <div className="flex items-start gap-4 flex-1">
+                        <div className={`w-14 h-14 rounded-xl bg-arcane-800 border-2 border-current ${config?.color || 'text-gold-500'} flex items-center justify-center flex-shrink-0`}>
+                          {config?.icon && <config.icon className="w-7 h-7" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <h3 className="font-display text-lg font-bold text-gold-400">
+                              {mission?.title || '未知任务'}
+                            </h3>
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                              isSuccess ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                            }`}>
+                              {isSuccess ? '成功' : '失败'}
+                            </span>
+                            <span className={`text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400`}>
+                              完美度 {Math.round(execution.perfection)}%
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-4 mt-2 flex-wrap">
+                            <span className="text-sm text-arcane-300">
+                              {config?.label} · {mission?.target?.location}
+                            </span>
+                            <span className="text-sm text-arcane-400">
+                              {execution.spyIds.length} 名间谍
+                            </span>
+                            <span className="text-sm text-arcane-400 flex items-center gap-1">
+                              <Clock className="w-3.5 h-3.5" />
+                              {execution.endTime ? new Date(execution.endTime).toLocaleString('zh-CN') : '未知时间'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {result && (
+                      <div className="mt-4 pt-4 border-t border-arcane-600/30">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                          {isSuccess && (
+                            <div className="p-3 bg-arcane-800/50 rounded-lg">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Coins className="w-4 h-4 text-gold-500" />
+                                <span className="text-sm text-arcane-400">积分</span>
+                              </div>
+                              <p className="font-mono text-xl font-bold text-green-400">
+                                +{result.intelPoints}
+                              </p>
+                            </div>
+                          )}
+                          <div className="p-3 bg-arcane-800/50 rounded-lg">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Award className="w-4 h-4 text-purple-500" />
+                              <span className="text-sm text-arcane-400">声望</span>
+                            </div>
+                            <p className={`font-mono text-xl font-bold ${
+                              result.reputation >= 0 ? 'text-green-400' : 'text-red-400'
+                            }`}>
+                              {result.reputation >= 0 ? '+' : ''}{result.reputation}
+                            </p>
+                          </div>
+                          {!isSuccess && (
+                            <div className="p-3 bg-arcane-800/50 rounded-lg">
+                              <div className="flex items-center gap-2 mb-1">
+                                <AlertTriangle className="w-4 h-4 text-red-500" />
+                                <span className="text-sm text-arcane-400">暴露风险</span>
+                              </div>
+                              <p className="font-mono text-xl font-bold text-red-400">
+                                +{result.exposureRisk}%
+                              </p>
+                            </div>
+                          )}
+                          <div className="p-3 bg-arcane-800/50 rounded-lg">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Activity className="w-4 h-4 text-purple-400" />
+                              <span className="text-sm text-arcane-400">完美度</span>
+                            </div>
+                            <p className="font-mono text-xl font-bold text-purple-400">
+                              {result.perfection.toFixed(0)}%
+                            </p>
+                          </div>
+                        </div>
+
+                        {isSuccess && result.scrolls && result.scrolls.length > 0 && (
+                          <div className="p-4 bg-blue-900/20 border border-blue-500/30 rounded-lg">
+                            <p className="text-sm text-blue-300 mb-3 flex items-center gap-2">
+                              <ScrollText className="w-4 h-4" />
+                              获得情报卷轴
+                            </p>
+                            <div className="space-y-2">
+                              {result.scrolls.map((s: any, idx: number) => (
+                                <div
+                                  key={idx}
+                                  className="flex items-center justify-between p-3 bg-arcane-800/50 rounded-lg"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <div className={`w-8 h-8 rounded flex items-center justify-center border ${rarityColors[s.rarity as keyof typeof rarityColors]}`}>
+                                      <ScrollText className={`w-4 h-4 ${rarityColors[s.rarity as keyof typeof rarityColors].split(' ')[1]}`} />
+                                    </div>
+                                    <span className="text-gold-300 font-medium">{s.name}</span>
+                                  </div>
+                                  <span className={`text-xs px-2 py-0.5 rounded-full border ${rarityColors[s.rarity as keyof typeof rarityColors]}`}>
+                                    {rarityCn[s.rarity as keyof typeof rarityCn]}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </ArcaneCard>
+                </motion.div>
+              );
+            })}
+          </div>
+        ) : (
+          <ArcaneCard className="p-12 text-center">
+            <ScrollText className="w-16 h-16 mx-auto mb-4 text-arcane-500 opacity-50" />
+            <h3 className="text-xl font-bold text-gold-400 mb-2">暂无执行记录</h3>
+            <p className="text-arcane-400">完成或失败的任务将显示在这里</p>
+          </ArcaneCard>
+        )
+      ) : null}
 
       <AnimatePresence>
         {selectedMission && <MissionDetailModal />}

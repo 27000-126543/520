@@ -117,6 +117,18 @@ export interface MissionExecution {
     detectionRisk: number;
     stamina: number;
   };
+  result?: {
+    success: boolean;
+    perfection: number;
+    intelPoints: number;
+    reputation: number;
+    exposureRisk: number;
+    scrolls: Array<{
+      id: string;
+      name: string;
+      rarity: SpyRarity;
+    }>;
+  };
 }
 
 export type ListingType = 'intel_scroll' | 'spy_contract';
@@ -269,7 +281,7 @@ export interface MissionActionRequest {
 }
 
 export interface CreateListingRequest {
-  type: ListingType;
+  type?: ListingType;
   itemId: string;
   price: number;
 }
