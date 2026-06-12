@@ -1,32 +1,19 @@
 import { v4 as uuidv4 } from 'uuid';
+import bcrypt from 'bcrypt';
 import type {
   User, Organization, Spy, Mission, MarketListing,
   IntelScroll, Guild, Building, WeeklyReport, RankingEntry,
   Announcement, MissionExecution, TradeHistory
 } from '../../shared/types';
 
-const PASSWORD = 'password';
-
-const hashPassword = async (pw: string): Promise<string> => {
-  const bcrypt = await import('bcrypt');
-  return bcrypt.hash(pw, 10);
-};
-
-const preHashSync = (pw: string): string => {
-  try {
-    const bcrypt = require('bcrypt');
-    return bcrypt.hashSync(pw, 10);
-  } catch {
-    return '$2b$10$DemoHashForPasswordOnlyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX';
-  }
-};
+const PASSWORD_HASH_DEMO: string = bcrypt.hashSync ? bcrypt.hashSync('password', 10) : '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy';
 
 export const mockUsers: User[] = [
   {
     id: 'user-1',
     username: 'ShadowMaster',
     email: 'shadow@intel.com',
-    passwordHash: preHashSync(PASSWORD),
+    passwordHash: PASSWORD_HASH_DEMO,
     createdAt: new Date('2026-01-15')
   }
 ];
@@ -103,289 +90,354 @@ export const mockSpies: Spy[] = [
   {
     id: 'spy-2',
     name: '马库斯·迷雾',
-    codeName: 'Phantom-047',
+    codeName: 'Phantom-014',
     organizationId: 'org-1',
-    skills: { stealth: 70, disguise: 88, decryption: 55 },
-    stats: { health: 90, maxHealth: 100, stamina: 80, maxStamina: 100, concealment: 78, detectionRisk: 12 },
+    skills: { stealth: 72, disguise: 80, decryption: 70 },
+    stats: { health: 100, maxHealth: 100, stamina: 88, maxStamina: 100, concealment: 78, detectionRisk: 12 },
+    rarity: 'epic',
+    status: 'idle',
+    equippedScrolls: [],
+    createdAt: new Date('2026-02-05')
+  },
+  {
+    id: 'spy-3',
+    name: '莉拉·暗夜',
+    codeName: 'Raven-003',
+    organizationId: 'org-1',
+    skills: { stealth: 75, disguise: 70, decryption: 78 },
+    stats: { health: 90, maxHealth: 100, stamina: 92, maxStamina: 100, concealment: 80, detectionRisk: 10 },
     rarity: 'epic',
     status: 'idle',
     equippedScrolls: [],
     createdAt: new Date('2026-02-10')
   },
   {
-    id: 'spy-3',
-    name: '莉拉·暗夜',
-    codeName: 'Raven-023',
+    id: 'spy-4',
+    name: '凯恩·沉默',
+    codeName: 'Silent-077',
     organizationId: 'org-1',
-    skills: { stealth: 60, disguise: 55, decryption: 82 },
-    stats: { health: 100, maxHealth: 100, stamina: 100, maxStamina: 100, concealment: 72, detectionRisk: 15 },
-    rarity: 'epic',
+    skills: { stealth: 60, disguise: 58, decryption: 65 },
+    stats: { health: 100, maxHealth: 100, stamina: 85, maxStamina: 100, concealment: 70, detectionRisk: 18 },
+    rarity: 'rare',
     status: 'idle',
     equippedScrolls: [],
     createdAt: new Date('2026-02-15')
-  },
-  {
-    id: 'spy-4',
-    name: '凯恩·沉默',
-    codeName: 'Silent-089',
-    organizationId: 'org-1',
-    skills: { stealth: 50, disguise: 45, decryption: 40 },
-    stats: { health: 100, maxHealth: 100, stamina: 85, maxStamina: 100, concealment: 65, detectionRisk: 20 },
-    rarity: 'rare',
-    status: 'training',
-    equippedScrolls: [],
-    createdAt: new Date('2026-03-01')
   }
 ];
 
-const missionTemplates = [
-  {
-    type: 'assassination' as const,
-    titles: ['暗杀：黑暗法师', '暗杀：腐败领主', '暗杀：叛国骑士'],
-    locations: ['暗影要塞', '金色议会', '边境城堡'],
-    difficulties: [3, 5, 7]
-  },
-  {
-    type: 'theft' as const,
-    titles: ['窃取：龙血配方', '窃取：皇家密函', '窃取：魔法核心'],
-    locations: ['魔法学院', '皇家宝库', '炼金工坊'],
-    difficulties: [4, 6, 8]
-  },
-  {
-    type: 'infiltration' as const,
-    titles: ['渗透：敌方情报网', '渗透：秘密结社', '渗透：地下城'],
-    locations: ['地下黑市', '盗贼公会', '远古遗迹'],
-    difficulties: [5, 7, 9]
-  }
+const scrollTemplates = [
+  { name: '王室密信', desc: '截获的王室内部通讯', skill: 'stealth' },
+  { name: '商队交易记录', desc: '地下商会的隐秘账目', skill: 'decryption' },
+  { name: '城防图', desc: '城堡的布防详图', skill: 'stealth' },
+  { name: '魔法咒语残卷', desc: '失落的魔法公式', skill: 'decryption' },
+  { name: '贵族宴会邀请函', desc: '可作为身份掩护的凭证', skill: 'disguise' },
+  { name: '敌军情报简报', desc: '敌军动向的详细记录', skill: 'stealth' },
+  { name: '易容秘方', desc: '改变容貌的药剂配方', skill: 'disguise' },
+  { name: '密语手册', desc: '古老的暗号系统', skill: 'decryption' },
+  { name: '地下交通图', desc: '城市隐秘通道的全图', skill: 'stealth' },
+  { name: '伪造文书套装', desc: '逼真的身份文件', skill: 'disguise' },
+  { name: '金库布局图', desc: '银行保险库的平面图', skill: 'stealth' },
+  { name: '亡灵契约', desc: '召唤亡灵仆人的契约', skill: 'decryption' }
 ];
-
-export const generateMissions = (count = 10): Mission[] => {
-  const missions: Mission[] = [];
-  
-  for (let i = 0; i < count; i++) {
-    const template = missionTemplates[Math.floor(Math.random() * missionTemplates.length)];
-    const difficulty = template.difficulties[Math.floor(Math.random() * template.difficulties.length)];
-    const title = template.titles[Math.floor(Math.random() * template.titles.length)];
-    const location = template.locations[Math.floor(Math.random() * template.locations.length)];
-    
-    const reqStealth = Math.random() > 0.3 ? 20 + difficulty * 5 : undefined;
-    const reqDisguise = Math.random() > 0.3 ? 20 + difficulty * 5 : undefined;
-    const reqDecryption = template.type === 'theft' || Math.random() > 0.5 ? 20 + difficulty * 5 : undefined;
-    
-    missions.push({
-      id: uuidv4(),
-      type: template.type,
-      title: title + ' #' + (i + 1),
-      description: `目标位于${location}，需要出色的间谍技巧才能完成。任务难度：${difficulty}/10`,
-      difficulty,
-      targetLocation: location,
-      requiredSkills: {
-        ...(reqStealth && { stealth: reqStealth }),
-        ...(reqDisguise && { disguise: reqDisguise }),
-        ...(reqDecryption && { decryption: reqDecryption })
-      },
-      baseSuccessRate: Math.max(20, 90 - difficulty * 7),
-      rewards: {
-        intelPoints: difficulty * 100 + Math.floor(Math.random() * 200),
-        reputation: difficulty * 10 + Math.floor(Math.random() * 20),
-        scrolls: Math.random() > 0.7 ? ['scroll-' + Math.floor(Math.random() * 100)] : []
-      },
-      penalties: {
-        reputationLoss: difficulty * 15,
-        exposureIncrease: difficulty * 3
-      },
-      timeLimit: 30 + difficulty * 10
-    });
-  }
-  
-  return missions;
-};
-
-export const mockMissions: Mission[] = generateMissions(12);
 
 export const mockScrolls: IntelScroll[] = [
   {
     id: 'scroll-1',
-    ownerId: 'org-1',
-    name: '隐匿术·暗影',
-    rarity: 'epic',
-    effect: '大幅提升隐匿技能，使间谍更难被发现',
-    type: 'stealth',
-    bonus: { stealth: 15 }
+    name: '王室密信',
+    description: '截获的王室内部通讯',
+    rarity: 'legendary',
+    skillBonus: { stealth: 15 },
+    organizationId: 'org-1',
+    createdAt: new Date('2026-03-01')
   },
   {
     id: 'scroll-2',
-    ownerId: 'org-1',
-    name: '千面术·精通',
-    rarity: 'rare',
-    effect: '提升伪装技能，增强间谍渗透能力',
-    type: 'disguise',
-    bonus: { disguise: 10 }
+    name: '魔法咒语残卷',
+    description: '失落的魔法公式片段',
+    rarity: 'epic',
+    skillBonus: { decryption: 12 },
+    organizationId: 'org-1',
+    createdAt: new Date('2026-03-05')
   },
   {
     id: 'scroll-3',
-    ownerId: 'org-1',
-    name: '解密术·洞察',
-    rarity: 'epic',
-    effect: '大幅提升破解技能，加速情报解密',
-    type: 'decryption',
-    bonus: { decryption: 12 }
+    name: '易容秘方',
+    description: '改变容貌的魔法药剂配方',
+    rarity: 'rare',
+    skillBonus: { disguise: 8 },
+    organizationId: 'org-1',
+    createdAt: new Date('2026-03-08')
+  },
+  {
+    id: 'scroll-4',
+    name: '城防图',
+    description: '城堡守卫部署图',
+    rarity: 'rare',
+    skillBonus: { stealth: 6 },
+    organizationId: 'org-1',
+    createdAt: new Date('2026-03-10')
+  },
+  {
+    id: 'scroll-5',
+    name: '密语手册',
+    description: '地下世界通用暗号手册',
+    rarity: 'common',
+    skillBonus: { decryption: 4 },
+    organizationId: 'org-1',
+    createdAt: new Date('2026-03-12')
+  }
+];
+
+export const mockMissions: Mission[] = [
+  {
+    id: 'mission-1',
+    title: '潜入贵族宅邸',
+    description: '潜入贵族私人宅邸，窃取他与敌军秘密通信的证据。',
+    type: 'steal',
+    target: null,
+    difficulty: 60,
+    requiredSpies: 1,
+    maxSpies: 3,
+    timeLimit: 120,
+    stealthRequired: 50,
+    disguiseRequired: 30,
+    decryptionRequired: 20,
+    rewards: {
+      intelPoints: 1500,
+      reputation: 50,
+      scrolls: ['rare', 'uncommon']
+    },
+    penalties: {
+      reputationLoss: 20,
+      exposureIncrease: 15
+    }
+  },
+  {
+    id: 'mission-2',
+    title: '暗杀毒贩头目',
+    description: '处理掉那个与敌对组织勾结的黑市毒贩，不留痕迹。',
+    type: 'assassinate',
+    target: { name: '毒贩·毒蛇', location: '黑巷' },
+    difficulty: 80,
+    requiredSpies: 2,
+    maxSpies: 4,
+    timeLimit: 180,
+    stealthRequired: 70,
+    disguiseRequired: 50,
+    decryptionRequired: 0,
+    rewards: {
+      intelPoints: 3000,
+      reputation: 100,
+      scrolls: ['epic', 'rare']
+    },
+    penalties: {
+      reputationLoss: 40,
+      exposureIncrease: 25
+    }
+  },
+  {
+    id: 'mission-3',
+    title: '渗透魔法师公会',
+    description: '伪装成学徒，渗透进魔法师公会，学习他们的秘密仪式。',
+    type: 'infiltrate',
+    target: null,
+    difficulty: 70,
+    requiredSpies: 2,
+    maxSpies: 3,
+    timeLimit: 240,
+    stealthRequired: 40,
+    disguiseRequired: 75,
+    decryptionRequired: 60,
+    rewards: {
+      intelPoints: 2500,
+      reputation: 80,
+      scrolls: ['epic']
+    },
+    penalties: {
+      reputationLoss: 30,
+      exposureIncrease: 20
+    }
+  },
+  {
+    id: 'mission-4',
+    title: '守卫巡逻线侦察',
+    description: '收集边境守卫的巡逻规律，为后续行动做准备。',
+    type: 'steal',
+    target: null,
+    difficulty: 30,
+    requiredSpies: 1,
+    maxSpies: 2,
+    timeLimit: 60,
+    stealthRequired: 20,
+    disguiseRequired: 10,
+    decryptionRequired: 10,
+    rewards: {
+      intelPoints: 500,
+      reputation: 15,
+      scrolls: ['common']
+    },
+    penalties: {
+      reputationLoss: 10,
+      exposureIncrease: 5
+    }
+  },
+  {
+    id: 'mission-5',
+    title: '破解加密账本',
+    description: '破解敌方财务官的加密账本，找出他们的资金流向。',
+    type: 'infiltrate',
+    target: null,
+    difficulty: 50,
+    requiredSpies: 1,
+    maxSpies: 2,
+    timeLimit: 100,
+    stealthRequired: 30,
+    disguiseRequired: 20,
+    decryptionRequired: 60,
+    rewards: {
+      intelPoints: 1200,
+      reputation: 35,
+      scrolls: ['rare', 'common']
+    },
+    penalties: {
+      reputationLoss: 15,
+      exposureIncrease: 10
+    }
   }
 ];
 
 export const mockMarketListings: MarketListing[] = [
   {
     id: 'listing-1',
-    sellerId: 'org-2',
-    sellerName: '鹰眼情报社',
+    sellerId: 'org-1',
+    sellerName: '暗夜议会',
     type: 'intel_scroll',
-    itemId: 'scroll-101',
-    itemName: '隐匿术·传奇',
-    itemRarity: 'legendary',
-    price: 5000,
-    suggestedPriceRange: [4500, 6000],
+    itemId: 'scroll-3',
+    itemName: '易容秘方',
+    itemRarity: 'rare',
+    price: 1200,
+    suggestedPriceRange: [1000, 1500],
     createdAt: new Date(Date.now() - 3600000),
     expiresAt: new Date(Date.now() + 86400000)
-  },
-  {
-    id: 'listing-2',
-    sellerId: 'org-3',
-    sellerName: '夜枭密探',
-    type: 'intel_scroll',
-    itemId: 'scroll-102',
-    itemName: '千面术·精通',
-    itemRarity: 'epic',
-    price: 2500,
-    suggestedPriceRange: [2000, 3000],
-    createdAt: new Date(Date.now() - 7200000),
-    expiresAt: new Date(Date.now() + 72000000)
-  },
-  {
-    id: 'listing-3',
-    sellerId: 'org-4',
-    sellerName: '黑鸦事务所',
-    type: 'spy_contract',
-    itemId: 'spy-999',
-    itemName: '精英间谍·暗影',
-    itemRarity: 'epic',
-    price: 8000,
-    suggestedPriceRange: [7000, 9500],
-    createdAt: new Date(Date.now() - 1800000),
-    expiresAt: new Date(Date.now() + 108000000)
   }
 ];
 
-export const mockGuild: Guild = {
-  id: 'guild-1',
-  name: '暗影联盟',
-  leaderId: 'org-1',
-  memberIds: ['org-1', 'org-2', 'org-3', 'org-4', 'org-5'],
-  level: 3,
-  buildings: [
-    {
-      id: 'building-1',
-      guildId: 'guild-1',
-      type: 'intelStation',
-      name: '联合情报站',
-      level: 3,
-      maxLevel: 10,
-      effect: '提升全体成员任务成功率 15%',
-      bonus: 15,
-      requiredMaterials: [
-        { type: '魔法水晶', amount: 100 },
-        { type: '暗影精华', amount: 50 },
-        { type: '远古符文', amount: 20 }
-      ],
-      currentMaterials: { '魔法水晶': 75, '暗影精华': 30, '远古符文': 12 }
-    },
-    {
-      id: 'building-2',
-      guildId: 'guild-1',
-      type: 'commTower',
-      name: '加密通讯塔',
-      level: 2,
-      maxLevel: 10,
-      effect: '提升情报获取效率 10%',
-      bonus: 10,
-      requiredMaterials: [
-        { type: '魔法水晶', amount: 80 },
-        { type: '雷霆核心', amount: 40 },
-        { type: '远古符文', amount: 15 }
-      ],
-      currentMaterials: { '魔法水晶': 80, '雷霆核心': 25, '远古符文': 8 }
-    }
-  ],
-  totalContribution: 15600,
-  createdAt: new Date('2026-03-01')
-};
-
-export const mockRanking: RankingEntry[] = [
-  { rank: 1, playerId: 'org-10', playerName: '龙息情报网', value: 125000, change: 0 },
-  { rank: 2, playerId: 'org-1', playerName: '暗夜议会', value: 98500, change: 1 },
-  { rank: 3, playerId: 'org-11', playerName: '幽灵之手', value: 87200, change: -1 },
-  { rank: 4, playerId: 'org-2', playerName: '鹰眼情报社', value: 76800, change: 2 },
-  { rank: 5, playerId: 'org-12', playerName: '血色蔷薇', value: 65400, change: -1 },
-  { rank: 6, playerId: 'org-3', playerName: '夜枭密探', value: 58900, change: 0 },
-  { rank: 7, playerId: 'org-13', playerName: '虚空行者', value: 51200, change: 3 },
-  { rank: 8, playerId: 'org-4', playerName: '黑鸦事务所', value: 45600, change: -2 },
-  { rank: 9, playerId: 'org-14', playerName: '月影暗杀团', value: 38900, change: 1 },
-  { rank: 10, playerId: 'org-15', playerName: '深渊之眼', value: 32100, change: 0 }
+export const mockGuilds: Guild[] = [
+  {
+    id: 'guild-1',
+    name: '暗影联盟',
+    description: '由多个情报组织组成的地下联盟，共同对抗王国的压迫',
+    members: ['org-1'],
+    buildings: [
+      {
+        id: 'building-1',
+        type: 'intelStation',
+        name: '联合情报站',
+        level: 2,
+        bonus: 5,
+        materials: { documents: 50, gold: 30, gems: 10 }
+      },
+      {
+        id: 'building-2',
+        type: 'communicationTower',
+        name: '加密通讯塔',
+        level: 1,
+        bonus: 3,
+        materials: { documents: 30, gold: 50, gems: 5 }
+      }
+    ],
+    createdAt: new Date('2026-03-01')
+  }
 ];
 
-const regions = ['幽暗城', '金色议会', '边境城堡', '魔法学院', '皇家宝库', '地下黑市', '远古遗迹', '盗贼公会'];
-
-export const generateWeeklyReport = (): WeeklyReport => {
-  const regionHeatmap = regions.map(region => ({
-    region,
-    missionCount: 50 + Math.floor(Math.random() * 200),
-    successRate: 40 + Math.floor(Math.random() * 40)
-  }));
-  
-  const successRateTrend = Array.from({ length: 7 }, (_, i) => ({
-    date: `Day ${i + 1}`,
-    rate: 55 + Math.floor(Math.random() * 25)
-  }));
-  
-  const priceTrend = [
-    { type: 'legendary', averagePrice: 8000 + Math.floor(Math.random() * 3000), volume: 10 + Math.floor(Math.random() * 20) },
-    { type: 'epic', averagePrice: 3000 + Math.floor(Math.random() * 1500), volume: 30 + Math.floor(Math.random() * 50) },
-    { type: 'rare', averagePrice: 1000 + Math.floor(Math.random() * 500), volume: 80 + Math.floor(Math.random() * 100) }
-  ];
-  
-  return {
-    id: uuidv4(),
-    weekStart: new Date(Date.now() - 7 * 86400000),
-    weekEnd: new Date(),
-    regionHeatmap,
-    successRateTrend,
-    priceTrend,
-    topOrganizations: mockRanking.slice(0, 5),
-    totalMissions: 5000 + Math.floor(Math.random() * 3000),
-    totalVolume: 500000 + Math.floor(Math.random() * 500000)
-  };
+export const mockWeeklyReport: WeeklyReport = {
+  id: 'report-1',
+  periodStart: new Date(Date.now() - 7 * 24 * 3600000),
+  periodEnd: new Date(),
+  totalMissions: 47,
+  successfulMissions: 38,
+  failedMissions: 9,
+  successRate: 80.85,
+  totalIntelPoints: 125000,
+  regionActivity: [
+    { region: '幽暗城', missions: 18, successRate: 88.9 },
+    { region: '边境要塞', missions: 15, successRate: 73.3 },
+    { region: '王都', missions: 14, successRate: 78.6 }
+  ],
+  priceTrends: [
+    { rarity: 'common', prices: [180, 200, 190, 210, 205, 220, 230], average: 205 },
+    { rarity: 'rare', prices: [900, 950, 1000, 980, 1100, 1050, 1120], average: 1014 },
+    { rarity: 'epic', prices: [3000, 3200, 3100, 3400, 3300, 3500, 3600], average: 3300 }
+  ],
+  topPerformingSpies: [
+    { spyId: 'spy-1', spyName: '艾琳·暗影', missionsCompleted: 12, successRate: 92 }
+  ],
+  riskAssessment: '低风险：当前暴露率稳定在15%，建议继续执行中高难度任务以获取更多收益。'
 };
 
-export const mockWeeklyReport = generateWeeklyReport();
+export const mockRankings: RankingEntry[] = [
+  { rank: 1, name: '暗夜议会', value: 85000, category: 'intel' },
+  { rank: 2, name: '密语者', value: 72000, category: 'intel' },
+  { rank: 3, name: '暗影步', value: 65400, category: 'intel' },
+  { rank: 4, name: '黑玫瑰', value: 58000, category: 'intel' },
+  { rank: 5, name: '猎鹰', value: 51200, category: 'intel' }
+];
 
 export const mockAnnouncements: Announcement[] = [
   {
     id: 'ann-1',
-    type: 'trade',
-    message: '【鹰眼情报社】以 5,500 积分出售了【隐匿术·传奇】！',
-    timestamp: new Date(Date.now() - 300000)
+    type: 'system',
+    message: '【系统】暗影联盟情报网络正式上线，愿黑暗中的交易顺利！',
+    timestamp: new Date(Date.now() - 86400000)
   },
   {
     id: 'ann-2',
     type: 'achievement',
-    message: '恭喜【暗夜议会】完成传奇任务【暗杀：黑暗法师】，完美度 98%！',
-    timestamp: new Date(Date.now() - 600000)
-  },
-  {
-    id: 'ann-3',
-    type: 'system',
-    message: '系统公告：本周情报产业报告已生成，请前往查看。',
-    timestamp: new Date(Date.now() - 3600000)
+    message: '【暗夜议会】完成传说级任务「王室密信」，完美度 95%！',
+    timestamp: new Date(Date.now() - 43200000)
   }
 ];
 
 export const mockExecutions: MissionExecution[] = [];
+
+export const mockTradeHistories: TradeHistory[] = [];
+
+const missionTypes = ['steal', 'assassinate', 'infiltrate'] as const;
+const missionTitles = [
+  { title: '潜入贵族宅邸', type: 'steal' as const },
+  { title: '暗杀毒贩头目', type: 'assassinate' as const },
+  { title: '渗透魔法师公会', type: 'infiltrate' as const },
+  { title: '守卫巡逻线侦察', type: 'steal' as const },
+  { title: '破解加密账本', type: 'infiltrate' as const },
+  { title: '截获信使密信', type: 'steal' as const },
+  { title: '策反敌方将领', type: 'infiltrate' as const },
+  { title: '暗杀腐败官员', type: 'assassinate' as const },
+  { title: '盗宝密室', type: 'steal' as const },
+  { title: '窃取军事部署图', type: 'steal' as const },
+  { title: '混入王宫舞会', type: 'infiltrate' as const },
+  { title: '清除叛徒', type: 'assassinate' as const }
+];
+
+export function generateMissions(count: number): Mission[] {
+  const result: Mission[] = [];
+  const templates = mockMissions;
+  for (let i = 0; i < count; i++) {
+    const tpl = templates[i % templates.length];
+    const diffMult = 0.7 + Math.random() * 0.6;
+    const diff = Math.floor(tpl.difficulty * diffMult);
+    result.push({
+      ...tpl,
+      id: uuidv4(),
+      title: i < templates.length ? tpl.title : missionTitles[i % missionTitles.length].title,
+      type: i < templates.length ? tpl.type : missionTitles[i % missionTitles.length].type,
+      difficulty: diff,
+      timeLimit: Math.max(30, Math.floor(tpl.timeLimit * (0.8 + Math.random() * 0.4))),
+      rewards: {
+        intelPoints: Math.floor(tpl.rewards.intelPoints * (0.8 + Math.random() * 0.4)),
+        reputation: Math.floor(tpl.rewards.reputation * (0.8 + Math.random() * 0.4)),
+        scrolls: tpl.rewards.scrolls
+      }
+    });
+  }
+  return result;
+}

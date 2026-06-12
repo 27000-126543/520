@@ -20,7 +20,7 @@ export class MarketController {
     try {
       const { rarity } = req.params;
       const suggestion = marketService.getPriceSuggestion(rarity);
-      res.json({ success: true, data: { suggestedRange: suggestion } });
+      res.json({ success: true, data: suggestion });
     } catch (error) {
       res.status(500).json({
         success: false,

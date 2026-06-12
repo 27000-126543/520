@@ -56,7 +56,7 @@ export interface Spy {
   createdAt: Date;
 }
 
-export type MissionType = 'assassination' | 'theft' | 'infiltration';
+export type MissionType = 'steal' | 'assassinate' | 'infiltrate';
 
 export interface Mission {
   id: string;
@@ -64,13 +64,13 @@ export interface Mission {
   title: string;
   description: string;
   difficulty: number;
-  targetLocation: string;
-  requiredSkills: {
-    stealth?: number;
-    disguise?: number;
-    decryption?: number;
-  };
-  baseSuccessRate: number;
+  target: { name: string; location: string } | null;
+  requiredSpies: number;
+  maxSpies: number;
+  timeLimit: number;
+  stealthRequired: number;
+  disguiseRequired: number;
+  decryptionRequired: number;
   rewards: {
     intelPoints: number;
     reputation: number;
@@ -80,7 +80,6 @@ export interface Mission {
     reputationLoss: number;
     exposureIncrease: number;
   };
-  timeLimit: number;
 }
 
 export type MissionStatus = 'in_progress' | 'completed' | 'failed';
@@ -135,42 +134,33 @@ export interface MarketListing {
 
 export interface IntelScroll {
   id: string;
-  ownerId: string;
+  organizationId: string;
   name: string;
+  description: string;
   rarity: SpyRarity;
-  effect: string;
-  type: string;
-  bonus: {
+  skillBonus: {
     stealth?: number;
     disguise?: number;
     decryption?: number;
   };
+  createdAt: Date;
 }
 
 export interface Building {
   id: string;
-  guildId: string;
-  type: 'intelStation' | 'commTower';
+  type: 'intelStation' | 'communicationTower';
   name: string;
   level: number;
-  maxLevel: number;
-  effect: string;
   bonus: number;
-  requiredMaterials: {
-    type: string;
-    amount: number;
-  }[];
-  currentMaterials: Record<string, number>;
+  materials: Record<string, number>;
 }
 
 export interface Guild {
   id: string;
   name: string;
-  leaderId: string;
-  memberIds: string[];
-  level: number;
+  description: string;
+  members: string[];
   buildings: Building[];
-  totalContribution: number;
   createdAt: Date;
 }
 
@@ -185,35 +175,26 @@ export interface MaterialContribution {
 
 export interface RankingEntry {
   rank: number;
-  playerId: string;
-  playerName: string;
+  name: string;
   value: number;
-  change: number;
+  category: string;
 }
 
 export type RankingType = 'intel_points' | 'perfection' | 'guild_contribution';
 
 export interface WeeklyReport {
   id: string;
-  weekStart: Date;
-  weekEnd: Date;
-  regionHeatmap: {
-    region: string;
-    missionCount: number;
-    successRate: number;
-  }[];
-  successRateTrend: {
-    date: string;
-    rate: number;
-  }[];
-  priceTrend: {
-    type: string;
-    averagePrice: number;
-    volume: number;
-  }[];
-  topOrganizations: RankingEntry[];
+  periodStart: Date;
+  periodEnd: Date;
   totalMissions: number;
-  totalVolume: number;
+  successfulMissions: number;
+  failedMissions: number;
+  successRate: number;
+  totalIntelPoints: number;
+  regionActivity: Array<{ region: string; missions: number; successRate: number }>;
+  priceTrends: Array<{ rarity: string; prices: number[]; average: number }>;
+  topPerformingSpies: Array<{ spyId: string; spyName: string; missionsCompleted: number; successRate: number }>;
+  riskAssessment: string;
 }
 
 export interface Announcement {

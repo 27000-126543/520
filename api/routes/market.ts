@@ -4,11 +4,11 @@ import { authMiddleware } from '../middleware/auth';
 
 const router = Router();
 
-router.get('/intel', authMiddleware, marketController.getListings);
+router.get('/listings', authMiddleware, marketController.getListings);
 router.get('/scrolls', authMiddleware, marketController.getMyScrolls);
-router.get('/price/:rarity', authMiddleware, marketController.getPriceSuggestion);
-router.post('/intel', authMiddleware, marketController.createListing);
-router.post('/intel/:id/buy', authMiddleware, marketController.buyListing);
-router.delete('/intel/:id', authMiddleware, marketController.cancelListing);
+router.get('/price-suggestion/:rarity', authMiddleware, marketController.getPriceSuggestion);
+router.post('/listings', authMiddleware, marketController.createListing);
+router.post('/listings/:id/buy', authMiddleware, marketController.buyListing);
+router.delete('/listings/:id', authMiddleware, marketController.cancelListing);
 
 export default router;

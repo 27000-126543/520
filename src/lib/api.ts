@@ -140,30 +140,30 @@ export const missionAPI = {
 
 export const marketAPI = {
   getListings: () =>
-    fetch(`${API_BASE}/market/intel`, {
+    fetch(`${API_BASE}/market/listings`, {
       headers: headers()
     }).then(r => handleResponse<ApiResponse<MarketListing[]>>(r)),
 
   getPriceSuggestion: (rarity: string) =>
-    fetch(`${API_BASE}/market/price/${rarity}`, {
+    fetch(`${API_BASE}/market/price-suggestion/${rarity}`, {
       headers: headers()
-    }).then(r => handleResponse<ApiResponse<{ suggestedRange: [number, number] }>>(r)),
+    }).then(r => handleResponse<ApiResponse<[number, number]>>(r)),
 
   createListing: (data: CreateListingRequest) =>
-    fetch(`${API_BASE}/market/intel`, {
+    fetch(`${API_BASE}/market/listings`, {
       method: 'POST',
       headers: headers(),
       body: JSON.stringify(data)
     }).then(r => handleResponse<ApiResponse<MarketListing>>(r)),
 
   buy: (id: string) =>
-    fetch(`${API_BASE}/market/intel/${id}/buy`, {
+    fetch(`${API_BASE}/market/listings/${id}/buy`, {
       method: 'POST',
       headers: headers()
-    }).then(r => handleResponse<ApiResponse<MarketListing>>(r)),
+    }).then(r => handleResponse<ApiResponse<any>>(r)),
 
   cancel: (id: string) =>
-    fetch(`${API_BASE}/market/intel/${id}`, {
+    fetch(`${API_BASE}/market/listings/${id}`, {
       method: 'DELETE',
       headers: headers()
     }).then(r => handleResponse<ApiResponse<boolean>>(r)),
