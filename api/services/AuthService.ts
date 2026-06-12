@@ -11,8 +11,14 @@ export class AuthService {
       throw new Error('用户名或密码错误');
     }
 
-    const isValid = await bcrypt.compare(request.password, 'demo_hash');
-    if (!isValid && request.password !== 'password') {
+    let isValid = false;
+    try {
+      isValid = await bcrypt.compare(request.password, user.passwordHash);
+    } catch (err) {
+      isValid = false;
+    }
+
+    if (!isValid) {
       throw new Error('用户名或密码错误');
     }
 
@@ -41,6 +47,7 @@ export class AuthService {
       id: uuidv4(),
       username: request.username,
       email: request.email,
+      passwordHash: hashedPassword,
       createdAt: new Date()
     };
 
@@ -55,6 +62,19 @@ export class AuthService {
       token,
       user,
       organization: null
+    };
+  }
+
+  async me(userId: string): Promise<{ user: User; organization: any }> {
+    const user = store.getUser(userId);
+    if (!user) {
+      throw new Error('用户不存在');
+    }
+    const organization = store.getOrganizationByOwner(userId);
+    const { passwordHash, ...safeUser } = user;
+    return {
+      user: safeUser as User,
+      organization: organization || null
     };
   }
 }

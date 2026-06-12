@@ -24,19 +24,35 @@ export const initSocket = (token: string) => {
     console.log('Socket disconnected');
   });
 
-  socket.on('mission:update', (execution: MissionExecution) => {
+  socket.on('executionUpdate', (execution: MissionExecution) => {
     useGameStore.getState().updateExecution(execution);
+  });
+
+  socket.on('missionEvent', (event: any) => {
     useGameStore.getState().addNotification(
-      'mission',
-      `任务「${execution.id}」状态已更新`
+      'event',
+      `任务发生新事件：${event.description}`
     );
   });
 
-  socket.on('mission:event', (data: { executionId: string; event: any }) => {
+  socket.on('missionComplete', (data: {
+    success: boolean; perfection: number; pointsReward: number; reputationReward: number;
+    scrolls: { id: string; name: string; rarity: string }[];
+    failure: { reputationLoss: number; exposureIncrease: number } | null;
+  }) => {
+    const scrollList = data.scrolls.map(s => `${s.name}(${s.rarity})`).join('、') || '无';
     useGameStore.getState().addNotification(
-      'event',
-      `任务发生新事件：${data.event.description}`
+      data.success ? 'success' : 'error',
+      data.success
+        ? `任务完成！完美度 ${data.perfection.toFixed(0)}%，积分 +${data.pointsReward}，声望 +${data.reputationReward}，获得卷轴：${scrollList}`
+        : `任务失败！声望 -${data.failure?.reputationLoss || 0}，暴露风险 +${data.failure?.exposureIncrease || 0}`
     );
+    setTimeout(() => {
+      useGameStore.getState().loadExecutions();
+      useGameStore.getState().loadSpies();
+      useGameStore.getState().loadScrolls();
+      useGameStore.getState().loadOrganizationData();
+    }, 500);
   });
 
   socket.on('announcement:new', (announcement: Announcement) => {

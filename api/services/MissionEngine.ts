@@ -4,7 +4,7 @@ import { spyService } from './SpyService';
 import { organizationService } from './OrganizationService';
 import type {
   Mission, MissionExecution, MissionEvent, MissionStatus,
-  EventType, EventOutcome, PlayerAction, Spy
+  EventType, EventOutcome, PlayerAction, Spy, IntelScroll
 } from '../../shared/types';
 
 const EVENT_TYPES: EventType[] = ['patrol', 'betrayal', 'discovery', 'trap', 'opportunity'];
@@ -226,7 +226,9 @@ export class MissionEngine {
       const unresolvedPenalty = execution.events.filter(e => !e.resolved).length * 5;
       const staminaBonus = execution.realtimeStats.stamina * 0.2;
       const concealmentBonus = execution.realtimeStats.concealment * 0.3;
-      perfection = Math.min(100, Math.max(0, 70 + execution.currentSuccessRate * 0.3 - unresolvedPenalty + staminaBonus + concealmentBonus));
+      perfection = Math.min(100, Math.max(0,
+        70 + execution.currentSuccessRate * 0.3 - unresolvedPenalty + staminaBonus + concealmentBonus
+      ));
     }
 
     store.updateExecution(executionId, {
@@ -248,20 +250,31 @@ export class MissionEngine {
       }
     });
 
+    let rewardScrolls: IntelScroll[] = [];
+
     if (success) {
       const pointsReward = Math.floor(mission.rewards.intelPoints * (perfection / 100));
       const reputationReward = Math.floor(mission.rewards.reputation * (perfection / 100));
       organizationService.addIntelPoints(execution.organizationId, pointsReward);
       organizationService.updateReputation(execution.organizationId, reputationReward);
+      rewardScrolls = store.distributeMissionRewards(
+        execution.organizationId,
+        mission.rewards,
+        perfection
+      );
 
       if (perfection >= 90) {
         const org = store.getOrganization(execution.organizationId);
-        store.addAnnouncement({
+        const achievementAnn = {
           id: Date.now().toString(),
-          type: 'achievement',
+          type: 'achievement' as const,
           message: `恭喜【${org?.name || '未知组织'}】完成任务【${mission.title}】，完美度 ${perfection.toFixed(0)}%！`,
           timestamp: new Date()
-        });
+        };
+        store.addAnnouncement(achievementAnn);
+        if (this.io) {
+          this.io.emit('announcement:new', achievementAnn);
+        }
       }
     } else {
       organizationService.updateReputation(execution.organizationId, -mission.penalties.reputationLoss);
@@ -272,7 +285,13 @@ export class MissionEngine {
       this.io.to(`execution:${executionId}`).emit('missionComplete', {
         success,
         perfection,
-        rewards: success ? mission.rewards : mission.penalties
+        pointsReward: success ? Math.floor(mission.rewards.intelPoints * (perfection / 100)) : 0,
+        reputationReward: success ? Math.floor(mission.rewards.reputation * (perfection / 100)) : -mission.penalties.reputationLoss,
+        scrolls: rewardScrolls.map(s => ({ id: s.id, name: s.name, rarity: s.rarity })),
+        failure: success ? null : {
+          reputationLoss: mission.penalties.reputationLoss,
+          exposureIncrease: mission.penalties.exposureIncrease
+        }
       });
     }
   }

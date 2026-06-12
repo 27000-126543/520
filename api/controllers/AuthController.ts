@@ -35,15 +35,16 @@ export class AuthController {
       if (!req.user) {
         return res.status(401).json({ success: false, error: '未登录' });
       }
+      const result = await authService.me(req.user.id);
       res.json({
         success: true,
-        data: {
-          user: req.user,
-          organization: null
-        }
+        data: result
       });
     } catch (error) {
-      res.status(500).json({ success: false, error: '获取用户信息失败' });
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : '获取用户信息失败'
+      });
     }
   }
 }

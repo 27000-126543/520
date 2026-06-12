@@ -66,6 +66,21 @@ const AppRoutes = () => {
 };
 
 export default function App() {
+  const { isAuthenticated, initialize, isLoading } = useAuthStore();
+  const hasInitialized = useAuthStore(s => s.user || !s.token);
+
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
+
+  if (isAuthenticated && !hasInitialized) {
+    return (
+      <div className="min-h-screen bg-arcane-950 flex items-center justify-center">
+        <div className="animate-spin w-12 h-12 border-4 border-gold-500 border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
   return (
     <Router>
       <AppRoutes />

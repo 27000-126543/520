@@ -2,14 +2,31 @@ import { v4 as uuidv4 } from 'uuid';
 import type {
   User, Organization, Spy, Mission, MarketListing,
   IntelScroll, Guild, Building, WeeklyReport, RankingEntry,
-  Announcement, MissionExecution
+  Announcement, MissionExecution, TradeHistory
 } from '../../shared/types';
+
+const PASSWORD = 'password';
+
+const hashPassword = async (pw: string): Promise<string> => {
+  const bcrypt = await import('bcrypt');
+  return bcrypt.hash(pw, 10);
+};
+
+const preHashSync = (pw: string): string => {
+  try {
+    const bcrypt = require('bcrypt');
+    return bcrypt.hashSync(pw, 10);
+  } catch {
+    return '$2b$10$DemoHashForPasswordOnlyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX';
+  }
+};
 
 export const mockUsers: User[] = [
   {
     id: 'user-1',
     username: 'ShadowMaster',
     email: 'shadow@intel.com',
+    passwordHash: preHashSync(PASSWORD),
     createdAt: new Date('2026-01-15')
   }
 ];

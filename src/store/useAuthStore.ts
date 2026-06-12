@@ -13,16 +13,30 @@ interface AuthState {
   register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   setOrganization: (org: Organization) => void;
+  initialize: () => Promise<void>;
   clearError: () => void;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   organization: null,
   token: localStorage.getItem('token'),
   isAuthenticated: !!localStorage.getItem('token'),
   isLoading: false,
   error: null,
+
+  initialize: async () => {
+    const token = get().token;
+    if (!token) return;
+    try {
+      const res = await authAPI.me();
+      if (res.success && res.data) {
+        const { user, organization } = res.data as { user: User; organization: Organization | null };
+        set({ user, organization, isAuthenticated: true });
+      }
+    } catch (e) {
+    }
+  },
 
   login: async (username: string, password: string) => {
     set({ isLoading: true, error: null });

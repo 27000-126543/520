@@ -2,7 +2,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { store } from '../data/store';
 import { organizationService } from './OrganizationService';
 import type {
-  MarketListing, CreateListingRequest, ListingType, IntelScroll, Spy
+  MarketListing, CreateListingRequest, ListingType, IntelScroll, Spy,
+  TradeHistory
 } from '../../shared/types';
 
 export class MarketService {
@@ -63,7 +64,11 @@ export class MarketService {
     return store.createListing(listing);
   }
 
-  buyListing(listingId: string, buyerOrgId: string): MarketListing {
+  buyListing(listingId: string, buyerOrgId: string): {
+    listing: MarketListing;
+    buyerPoints: number;
+    sellerPoints: number;
+  } {
     const listing = store.getListings().find(l => l.id === listingId);
     if (!listing) throw new Error('商品不存在');
     if (listing.sellerId === buyerOrgId) throw new Error('不能购买自己的商品');
@@ -75,35 +80,50 @@ export class MarketService {
     const seller = store.getOrganization(listing.sellerId);
     if (!seller) throw new Error('卖家组织不存在');
 
-    store.updateOrganization(buyerOrgId, { intelPoints: buyer.intelPoints - listing.price });
-    store.updateOrganization(listing.sellerId, { intelPoints: seller.intelPoints + listing.price });
+    const newBuyerPoints = buyer.intelPoints - listing.price;
+    const newSellerPoints = seller.intelPoints + listing.price;
+
+    store.updateOrganization(buyerOrgId, { intelPoints: newBuyerPoints });
+    store.updateOrganization(listing.sellerId, { intelPoints: newSellerPoints });
 
     if (listing.type === 'intel_scroll') {
       store.updateScrollOwner(listing.itemId, buyerOrgId);
     } else if (listing.type === 'spy_contract') {
-      store.updateSpy(listing.itemId, { organizationId: buyerOrgId });
+      store.updateSpy(listing.itemId, { organizationId: buyerOrgId, status: 'idle' });
     }
 
     store.removeListing(listingId);
 
-    store.addAnnouncement({
+    const history: TradeHistory = {
+      id: 'trade-' + uuidv4(),
+      type: listing.type,
+      itemRarity: listing.itemRarity,
+      price: listing.price,
+      timestamp: new Date(),
+      sellerId: listing.sellerId,
+      buyerId: buyerOrgId
+    };
+    store.addTradeHistory(history);
+
+    const announcement = {
       id: Date.now().toString(),
-      type: 'trade',
+      type: 'trade' as const,
       message: `【${buyer.name}】以 ${listing.price.toLocaleString()} 积分购买了【${listing.itemName}】！`,
       timestamp: new Date(),
       data: { price: listing.price, itemName: listing.itemName }
-    });
+    };
+    store.addAnnouncement(announcement);
 
     if (this.io) {
-      this.io.emit('globalAnnouncement', {
-        id: Date.now().toString(),
-        type: 'trade',
-        message: `【${buyer.name}】以 ${listing.price.toLocaleString()} 积分购买了【${listing.itemName}】！`,
-        timestamp: new Date()
-      });
+      this.io.emit('announcement:new', announcement);
+      this.io.emit('market:update');
     }
 
-    return listing;
+    return {
+      listing,
+      buyerPoints: newBuyerPoints,
+      sellerPoints: newSellerPoints
+    };
   }
 
   cancelListing(listingId: string, orgId: string): boolean {

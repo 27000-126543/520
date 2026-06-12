@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from 'uuid';
 import {
   mockUsers, mockOrganizations, mockSpies, mockMissions,
   mockMarketListings, mockScrolls, mockGuild, mockRanking,
@@ -7,8 +8,31 @@ import {
 import type {
   User, Organization, Spy, Mission, MarketListing,
   IntelScroll, Guild, WeeklyReport, RankingEntry,
-  Announcement, MissionExecution, MissionEvent, PlayerAction
+  Announcement, MissionExecution, MissionEvent, PlayerAction,
+  TradeHistory, SpyRarity
 } from '../../shared/types';
+
+const DEFAULT_PRICES: Record<string, [number, number]> = {
+  common: [500, 1000],
+  rare: [1500, 3000],
+  epic: [3000, 6000],
+  legendary: [6000, 12000]
+};
+
+const scrollTemplates: Array<Omit<IntelScroll, 'id' | 'ownerId'>> = [
+  { name: '隐匿术·基础', rarity: 'common', effect: '小幅提升隐匿技能', type: 'stealth', bonus: { stealth: 5 } },
+  { name: '千面术·基础', rarity: 'common', effect: '小幅提升伪装技能', type: 'disguise', bonus: { disguise: 5 } },
+  { name: '解密术·基础', rarity: 'common', effect: '小幅提升破解技能', type: 'decryption', bonus: { decryption: 5 } },
+  { name: '隐匿术·精通', rarity: 'rare', effect: '提升隐匿技能', type: 'stealth', bonus: { stealth: 10 } },
+  { name: '千面术·精通', rarity: 'rare', effect: '提升伪装技能', type: 'disguise', bonus: { disguise: 10 } },
+  { name: '解密术·精通', rarity: 'rare', effect: '提升破解技能', type: 'decryption', bonus: { decryption: 10 } },
+  { name: '隐匿术·暗影', rarity: 'epic', effect: '大幅提升隐匿技能', type: 'stealth', bonus: { stealth: 18 } },
+  { name: '千面术·幻化', rarity: 'epic', effect: '大幅提升伪装技能', type: 'disguise', bonus: { disguise: 18 } },
+  { name: '解密术·洞察', rarity: 'epic', effect: '大幅提升破解技能', type: 'decryption', bonus: { decryption: 18 } },
+  { name: '隐匿术·传奇', rarity: 'legendary', effect: '传说级隐匿卷轴', type: 'stealth', bonus: { stealth: 30 } },
+  { name: '千面术·易形', rarity: 'legendary', effect: '传说级伪装卷轴', type: 'disguise', bonus: { disguise: 30 } },
+  { name: '解密术·真谛', rarity: 'legendary', effect: '传说级破解卷轴', type: 'decryption', bonus: { decryption: 30 } }
+];
 
 class DataStore {
   private users: User[] = [...mockUsers];
@@ -24,6 +48,7 @@ class DataStore {
   private executions: MissionExecution[] = [...mockExecutions];
   private executionTimers: Map<string, NodeJS.Timeout> = new Map();
   private eventCallbacks: Map<string, (event: MissionEvent) => void> = new Map();
+  private tradeHistories: TradeHistory[] = [];
 
   constructor() {
     this.rankings.set('intel_points', mockRanking);
@@ -184,16 +209,27 @@ class DataStore {
     return false;
   }
 
+  addTradeHistory(history: TradeHistory): void {
+    this.tradeHistories.push(history);
+  }
+
   getPriceSuggestion(itemRarity: string): [number, number] {
-    const basePrices: Record<string, [number, number]> = {
-      common: [500, 1000],
-      rare: [1500, 3000],
-      epic: [3000, 6000],
-      legendary: [6000, 12000]
-    };
-    const [min, max] = basePrices[itemRarity] || [500, 1000];
-    const variance = Math.floor(Math.random() * 500) - 250;
-    return [min + variance, max + variance];
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const recent = this.tradeHistories.filter(
+      t => t.itemRarity === itemRarity && t.timestamp.getTime() >= sevenDaysAgo
+    );
+
+    if (recent.length > 0) {
+      const avg = recent.reduce((sum, t) => sum + t.price, 0) / recent.length;
+      const variance = avg * 0.15;
+      return [
+        Math.max(100, Math.round(avg - variance)),
+        Math.round(avg + variance)
+      ];
+    }
+
+    const [min, max] = DEFAULT_PRICES[itemRarity] || DEFAULT_PRICES.common;
+    return [min, max];
   }
 
   getScrolls(orgId: string): IntelScroll[] {
@@ -207,6 +243,42 @@ class DataStore {
       return true;
     }
     return false;
+  }
+
+  generateScrollForReward(orgId: string, rarity: SpyRarity = 'rare'): IntelScroll | null {
+    const candidates = scrollTemplates.filter(s => s.rarity === rarity);
+    if (candidates.length === 0) return null;
+    const template = candidates[Math.floor(Math.random() * candidates.length)];
+    const scroll: IntelScroll = {
+      id: 'scroll-' + uuidv4(),
+      ownerId: orgId,
+      ...template
+    };
+    this.scrolls.push(scroll);
+    return scroll;
+  }
+
+  distributeMissionRewards(orgId: string, missionRewards: { scrolls: string[] }, perfection: number): IntelScroll[] {
+    const grantedScrolls: IntelScroll[] = [];
+    
+    let scrollCount = 0;
+    if (perfection >= 90) scrollCount = 2 + Math.floor(Math.random() * 2);
+    else if (perfection >= 70) scrollCount = 1 + Math.floor(Math.random() * 2);
+    else if (perfection >= 50) scrollCount = Math.random() > 0.5 ? 1 : 0;
+    else scrollCount = Math.random() > 0.7 ? 1 : 0;
+
+    for (let i = 0; i < scrollCount; i++) {
+      let rarity: SpyRarity = 'common';
+      const roll = Math.random();
+      if (roll < 0.05 && perfection >= 70) rarity = 'legendary';
+      else if (roll < 0.20 && perfection >= 50) rarity = 'epic';
+      else if (roll < 0.50) rarity = 'rare';
+
+      const scroll = this.generateScrollForReward(orgId, rarity);
+      if (scroll) grantedScrolls.push(scroll);
+    }
+
+    return grantedScrolls;
   }
 
   getGuild(id: string): Guild | undefined {

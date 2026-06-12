@@ -303,6 +303,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (response.success && response.data) {
         useAuthStore.getState().setOrganization(response.data);
         get().addNotification('success', '情报组织创建成功！');
+        await get().loadAll();
       }
     } catch (error) {
       get().addNotification('error', error instanceof Error ? error.message : '创建失败');

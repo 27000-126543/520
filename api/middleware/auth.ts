@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { store } from '../data/store';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret_key_for_demo_only';
 
@@ -22,7 +23,15 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as { id: string; username: string; organizationId?: string };
-    req.user = decoded;
+    
+    const organization = store.getOrganizationByOwner(decoded.id);
+    
+    req.user = {
+      id: decoded.id,
+      username: decoded.username,
+      organizationId: organization?.id
+    };
+    
     next();
   } catch (error) {
     return res.status(401).json({ success: false, error: '认证令牌无效或已过期' });

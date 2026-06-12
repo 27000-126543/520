@@ -2,7 +2,18 @@ export interface User {
   id: string;
   username: string;
   email: string;
+  passwordHash: string;
   createdAt: Date;
+}
+
+export interface TradeHistory {
+  id: string;
+  type: 'intel_scroll' | 'spy_contract';
+  itemRarity: string;
+  price: number;
+  timestamp: Date;
+  sellerId: string;
+  buyerId: string;
 }
 
 export interface Organization {
