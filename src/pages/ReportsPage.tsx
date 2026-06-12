@@ -141,14 +141,16 @@ export const ReportsPage = () => {
 
   const getPriceTrendData = () => {
     if (!weeklyReport) return [];
-    const typeMap: Record<string, string> = {
-      'intel_scroll': '情报卷轴',
-      'spy_contract': '间谍契约'
+    const rarityMap: Record<string, string> = {
+      'common': '普通',
+      'rare': '稀有',
+      'epic': '史诗',
+      'legendary': '传说'
     };
     return weeklyReport.priceTrend.map(item => ({
-      type: typeMap[item.type] || item.type,
-      平均价格: item.averagePrice,
-      交易量: item.volume
+      rarity: rarityMap[item.rarity] || item.rarity,
+      平均价格: item.average,
+      交易量: item.prices.length
     }));
   };
 
@@ -374,7 +376,7 @@ export const ReportsPage = () => {
               <LineChart data={getPriceTrendData()}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(212, 175, 55, 0.1)" />
                 <XAxis
-                  dataKey="type"
+                  dataKey="rarity"
                   stroke="#d4af37"
                   tick={{ fill: '#d4af37', fontSize: 11 }}
                 />
@@ -444,7 +446,7 @@ export const ReportsPage = () => {
           <div className="grid grid-cols-5 gap-4">
             {weeklyReport.topOrganizations.slice(0, 5).map((org, index) => (
               <motion.div
-                key={org.playerId}
+                key={org.orgId}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
@@ -463,13 +465,8 @@ export const ReportsPage = () => {
                 }`}>
                   {index + 1}
                 </div>
-                <p className="font-medium text-gold-300 truncate">{org.playerName}</p>
-                <p className="font-mono text-lg font-bold text-gold-400">{org.value}</p>
-                {org.change !== 0 && (
-                  <p className={`text-xs ${org.change > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {org.change > 0 ? '↑' : '↓'} {Math.abs(org.change)}
-                  </p>
-                )}
+                <p className="font-medium text-gold-300 truncate">{org.orgName}</p>
+                <p className="font-mono text-lg font-bold text-gold-400">{org.points}</p>
               </motion.div>
             ))}
           </div>

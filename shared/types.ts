@@ -10,10 +10,13 @@ export interface TradeHistory {
   id: string;
   type: 'intel_scroll' | 'spy_contract';
   itemRarity: string;
+  itemName: string;
   price: number;
   timestamp: Date;
   sellerId: string;
+  sellerName: string;
   buyerId: string;
+  buyerName: string;
 }
 
 export interface Organization {
@@ -151,8 +154,11 @@ export interface Building {
   type: 'intelStation' | 'communicationTower';
   name: string;
   level: number;
+  maxLevel: number;
   bonus: number;
   materials: Record<string, number>;
+  currentMaterials: Record<string, number>;
+  requiredMaterials: Array<{ type: string; amount: number }>;
 }
 
 export interface Guild {
@@ -178,6 +184,9 @@ export interface RankingEntry {
   name: string;
   value: number;
   category: string;
+  playerId: string;
+  playerName: string;
+  change: number;
 }
 
 export type RankingType = 'intel_points' | 'perfection' | 'guild_contribution';
@@ -186,14 +195,21 @@ export interface WeeklyReport {
   id: string;
   periodStart: Date;
   periodEnd: Date;
+  weekStart: Date;
+  weekEnd: Date;
   totalMissions: number;
   successfulMissions: number;
   failedMissions: number;
   successRate: number;
   totalIntelPoints: number;
+  totalVolume: number;
   regionActivity: Array<{ region: string; missions: number; successRate: number }>;
+  regionHeatmap: Array<{ region: string; missionCount: number; successRate: number }>;
+  successRateTrend: Array<{ date: string; rate: number; missions: number }>;
+  priceTrend: Array<{ rarity: string; prices: number[]; average: number }>;
   priceTrends: Array<{ rarity: string; prices: number[]; average: number }>;
   topPerformingSpies: Array<{ spyId: string; spyName: string; missionsCompleted: number; successRate: number }>;
+  topOrganizations: Array<{ orgId: string; orgName: string; points: number; successRate: number }>;
   riskAssessment: string;
 }
 

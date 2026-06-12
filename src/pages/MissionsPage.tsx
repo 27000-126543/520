@@ -8,19 +8,20 @@ import { StatBar } from '../components/ui/StatBar';
 import { LoadingScreen } from '../components/ui/LoadingScreen';
 import type { Mission, MissionExecution, MissionEvent, Spy } from '../../shared/types';
 import {
-  Target, Skull, FileSearch, Users, ShieldAlert, Clock, Coins,
+  Target, Skull, FileSearch, Users, ShieldAlert, Clock, Coins, Swords,
   Filter, X, CheckCircle, AlertTriangle, Zap, Shield, Heart,
-  Eye, MapPin, Play, ChevronRight, Hand, Trash2, Activity
+  Eye, MapPin, Play, ChevronRight, Hand, Trash2, Activity,
+  Award, ScrollText
 } from 'lucide-react';
 
 type MissionTab = 'available' | 'active';
-type TypeFilter = 'all' | 'assassination' | 'theft' | 'infiltration';
+type TypeFilter = 'all' | 'assassinate' | 'steal' | 'infiltrate';
 type DifficultyFilter = 'all' | '1' | '2' | '3' | '4' | '5';
 
 const typeConfig = {
-  assassination: { icon: Skull, color: 'text-blood-500', bg: 'from-blood-900/30', label: '暗杀' },
-  theft: { icon: FileSearch, color: 'text-blue-400', bg: 'from-blue-900/30', label: '窃取' },
-  infiltration: { icon: Users, color: 'text-green-400', bg: 'from-green-900/30', label: '渗透' }
+  assassinate: { icon: Skull, color: 'text-blood-500', bg: 'from-blood-900/30', label: '暗杀' },
+  steal: { icon: Swords, color: 'text-gold-500', bg: 'from-gold-900/30', label: '窃取' },
+  infiltrate: { icon: Users, color: 'text-blue-500', bg: 'from-blue-900/30', label: '渗透' }
 };
 
 const difficultyColors = {
@@ -47,12 +48,21 @@ const eventTypeLabels = {
   opportunity: '机遇'
 };
 
+const rarityColors = {
+  common: 'border-gray-500 text-gray-400',
+  rare: 'border-blue-500 text-blue-400',
+  epic: 'border-purple-500 text-purple-400',
+  legendary: 'border-gold-500 text-gold-400'
+};
+
+const rarityCn = { common: '普通', rare: '稀有', epic: '史诗', legendary: '传说' };
+
 export const MissionsPage = () => {
   const { isAuthenticated } = useAuthStore();
   const {
-    missions, executions, spies, isLoading,
+    missions, executions, spies, isLoading, lastMissionResult,
     loadMissions, loadExecutions, loadSpies,
-    acceptMission, handleMissionAction
+    acceptMission, handleMissionAction, clearLastMissionResult
   } = useGameStore();
 
   const [activeTab, setActiveTab] = useState<MissionTab>('available');
@@ -84,12 +94,13 @@ export const MissionsPage = () => {
   const idleSpies = spies.filter(s => s.status === 'idle');
 
   const calculateSuccessRate = (mission: Mission, spyIds: string[]) => {
-    if (spyIds.length === 0) return mission.baseSuccessRate;
+    const baseRate = Math.max(20, 85 - mission.difficulty * 10);
+    if (spyIds.length === 0) return baseRate;
     const selectedSpiesData = spies.filter(s => spyIds.includes(s.id));
     const avgSkills = selectedSpiesData.reduce((sum, s) => {
       return sum + (s.skills.stealth + s.skills.disguise + s.skills.decryption) / 3;
     }, 0) / selectedSpiesData.length;
-    return Math.min(99, mission.baseSuccessRate + avgSkills * 0.5);
+    return Math.min(99, baseRate + avgSkills * 0.5);
   };
 
   const handleAcceptMission = async () => {
@@ -164,7 +175,7 @@ export const MissionsPage = () => {
                     </span>
                     <span className="text-arcane-400 text-sm flex items-center gap-1">
                       <MapPin className="w-3 h-3" />
-                      {selectedMission.targetLocation}
+                      {selectedMission.target?.location}
                     </span>
                   </div>
                 </div>
@@ -188,7 +199,7 @@ export const MissionsPage = () => {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between p-3 bg-arcane-800/50 rounded-lg">
                     <span className="text-arcane-300">基础成功率</span>
-                    <span className="font-mono text-gold-400">{selectedMission.baseSuccessRate}%</span>
+                    <span className="font-mono text-gold-400">{Math.max(20, 85 - selectedMission.difficulty * 10)}%</span>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-arcane-800/50 rounded-lg">
                     <span className="text-arcane-300">时间限制</span>
@@ -197,31 +208,31 @@ export const MissionsPage = () => {
                   <div className="p-3 bg-arcane-800/50 rounded-lg">
                     <span className="text-arcane-300 text-sm block mb-2">所需技能</span>
                     <div className="space-y-2">
-                      {selectedMission.requiredSkills.stealth !== undefined && (
+                      {selectedMission.stealthRequired > 0 && (
                         <div className="flex items-center gap-2">
                           <span className="text-arcane-400 text-xs w-12">隐匿</span>
                           <div className="flex-1">
-                            <StatBar value={selectedMission.requiredSkills.stealth} max={100} color="purple" showValue={false} />
+                            <StatBar value={selectedMission.stealthRequired} max={100} color="purple" showValue={false} />
                           </div>
-                          <span className="text-xs font-mono text-arcane-400">{selectedMission.requiredSkills.stealth}</span>
+                          <span className="text-xs font-mono text-arcane-400">{selectedMission.stealthRequired}</span>
                         </div>
                       )}
-                      {selectedMission.requiredSkills.disguise !== undefined && (
+                      {selectedMission.disguiseRequired > 0 && (
                         <div className="flex items-center gap-2">
                           <span className="text-blue-400 text-xs w-12">伪装</span>
                           <div className="flex-1">
-                            <StatBar value={selectedMission.requiredSkills.disguise} max={100} color="blue" showValue={false} />
+                            <StatBar value={selectedMission.disguiseRequired} max={100} color="blue" showValue={false} />
                           </div>
-                          <span className="text-xs font-mono text-blue-400">{selectedMission.requiredSkills.disguise}</span>
+                          <span className="text-xs font-mono text-blue-400">{selectedMission.disguiseRequired}</span>
                         </div>
                       )}
-                      {selectedMission.requiredSkills.decryption !== undefined && (
+                      {selectedMission.decryptionRequired > 0 && (
                         <div className="flex items-center gap-2">
                           <span className="text-green-400 text-xs w-12">破解</span>
                           <div className="flex-1">
-                            <StatBar value={selectedMission.requiredSkills.decryption} max={100} color="green" showValue={false} />
+                            <StatBar value={selectedMission.decryptionRequired} max={100} color="green" showValue={false} />
                           </div>
-                          <span className="text-xs font-mono text-green-400">{selectedMission.requiredSkills.decryption}</span>
+                          <span className="text-xs font-mono text-green-400">{selectedMission.decryptionRequired}</span>
                         </div>
                       )}
                     </div>
@@ -236,20 +247,40 @@ export const MissionsPage = () => {
                 </h3>
                 <div className="space-y-3">
                   <div className="p-3 bg-green-900/20 border border-green-500/30 rounded-lg">
-                    <span className="text-green-400 text-sm block mb-2">奖励</span>
-                    <div className="space-y-1">
-                      <div className="flex justify-between">
-                        <span className="text-arcane-300">情报积分</span>
+                    <span className="text-green-400 text-sm block mb-2">预计奖励</span>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Coins className="w-4 h-4 text-gold-500" />
+                          <span className="text-arcane-300">情报积分</span>
+                        </div>
                         <span className="font-mono text-gold-400">+{selectedMission.rewards.intelPoints}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-arcane-300">声望</span>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Award className="w-4 h-4 text-purple-500" />
+                          <span className="text-arcane-300">声望</span>
+                        </div>
                         <span className="font-mono text-purple-400">+{selectedMission.rewards.reputation}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-arcane-300">情报卷轴</span>
-                        <span className="font-mono text-blue-400">{selectedMission.rewards.scrolls.length}个</span>
-                      </div>
+                      {selectedMission.rewards.scrolls.length > 0 && (
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <ScrollText className="w-4 h-4 text-blue-500" />
+                            <span className="text-arcane-300">情报卷轴</span>
+                          </div>
+                          <div className="flex gap-1">
+                            {selectedMission.rewards.scrolls.map((rarity, idx) => (
+                              <span
+                                key={idx}
+                                className={`text-xs font-medium px-1.5 py-0.5 rounded border ${rarityColors[rarity as keyof typeof rarityColors]}`}
+                              >
+                                {rarityCn[rarity as keyof typeof rarityCn]}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
@@ -568,6 +599,140 @@ export const MissionsPage = () => {
     );
   };
 
+  const MissionResultModal = () => {
+    if (!lastMissionResult) return null;
+
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4"
+        onClick={() => clearLastMissionResult()}
+      >
+        <motion.div
+          initial={{ scale: 0.8, y: 30 }}
+          animate={{ scale: 1, y: 0 }}
+          exit={{ scale: 0.8, y: 30 }}
+          onClick={e => e.stopPropagation()}
+          className="w-full max-w-lg"
+        >
+          <ArcaneCard className={`p-8 ${
+            lastMissionResult.success
+              ? 'bg-gradient-to-br from-green-900/40 to-arcane-900/90 border-green-500/50'
+              : 'bg-gradient-to-br from-red-900/40 to-arcane-900/90 border-red-500/50'
+          }`}>
+            <div className="text-center mb-6">
+              <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-4 ${
+                lastMissionResult.success
+                  ? 'bg-green-500/20 border-2 border-green-500'
+                  : 'bg-red-500/20 border-2 border-red-500'
+              }`}>
+                {lastMissionResult.success ? (
+                  <Award className="w-10 h-10 text-green-400" />
+                ) : (
+                  <AlertTriangle className="w-10 h-10 text-red-400" />
+                )}
+              </div>
+              <h2 className="font-display text-3xl font-bold mb-2">
+                <span className={lastMissionResult.success ? 'text-green-400' : 'text-red-400'}>
+                  {lastMissionResult.success ? '任务完成！' : '任务失败...'}
+                </span>
+              </h2>
+              <p className="text-gold-300 text-lg">{lastMissionResult.missionTitle}</p>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              <div className="p-4 bg-arcane-800/50 rounded-lg">
+                <p className="text-sm text-arcane-400 mb-2">完美度</p>
+                <p className="font-display text-3xl font-bold text-purple-400">
+                  {lastMissionResult.perfection.toFixed(0)}%
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-4 bg-arcane-800/50 rounded-lg text-center">
+                  <div className="flex items-center justify-center gap-2 mb-1">
+                    <Coins className="w-4 h-4 text-gold-500" />
+                    <span className="text-sm text-arcane-400">积分</span>
+                  </div>
+                  <p className={`font-mono text-2xl font-bold ${
+                    lastMissionResult.intelPoints >= 0 ? 'text-green-400' : 'text-red-400'
+                  }`}>
+                    {lastMissionResult.intelPoints >= 0 ? '+' : ''}{lastMissionResult.intelPoints}
+                  </p>
+                </div>
+                <div className="p-4 bg-arcane-800/50 rounded-lg text-center">
+                  <div className="flex items-center justify-center gap-2 mb-1">
+                    <Award className="w-4 h-4 text-purple-500" />
+                    <span className="text-sm text-arcane-400">声望</span>
+                  </div>
+                  <p className={`font-mono text-2xl font-bold ${
+                    lastMissionResult.reputation >= 0 ? 'text-green-400' : 'text-red-400'
+                  }`}>
+                    {lastMissionResult.reputation >= 0 ? '+' : ''}{lastMissionResult.reputation}
+                  </p>
+                </div>
+              </div>
+
+              {lastMissionResult.success && lastMissionResult.scrolls && lastMissionResult.scrolls.length > 0 && (
+                <div className="p-4 bg-blue-900/20 border border-blue-500/30 rounded-lg">
+                  <p className="text-sm text-blue-300 mb-3 flex items-center gap-2">
+                    <ScrollText className="w-4 h-4" />
+                    获得情报卷轴
+                  </p>
+                  <div className="space-y-2">
+                    {lastMissionResult.scrolls.map((s: any, idx: number) => (
+                      <motion.div
+                        key={idx}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: idx * 0.1 }}
+                        className="flex items-center justify-between p-3 bg-arcane-800/50 rounded-lg"
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className={`w-8 h-8 rounded flex items-center justify-center border ${rarityColors[s.rarity as keyof typeof rarityColors]}`}>
+                            <ScrollText className={`w-4 h-4 ${rarityColors[s.rarity as keyof typeof rarityColors].split(' ')[1]}`} />
+                          </div>
+                          <span className="text-gold-300 font-medium">{s.name}</span>
+                        </div>
+                        <span className={`text-xs px-2 py-0.5 rounded-full border ${rarityColors[s.rarity as keyof typeof rarityColors]}`}>
+                          {rarityCn[s.rarity as keyof typeof rarityCn]}
+                        </span>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {!lastMissionResult.success && (
+                <div className="p-4 bg-red-900/20 border border-red-500/30 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-red-400" />
+                      <span className="text-sm text-arcane-300">暴露风险增加</span>
+                    </div>
+                    <span className="font-mono text-lg font-bold text-red-400">
+                      +{lastMissionResult.exposureRisk}%
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <ArcaneButton
+              className="w-full"
+              variant={lastMissionResult.success ? 'primary' : 'secondary'}
+              onClick={() => clearLastMissionResult()}
+            >
+              确认
+            </ArcaneButton>
+          </ArcaneCard>
+        </motion.div>
+      </motion.div>
+    );
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
@@ -625,9 +790,9 @@ export const MissionsPage = () => {
               className="px-3 py-2 bg-arcane-800/50 border border-gold-500/30 rounded-lg text-gold-200 text-sm focus:outline-none focus:border-gold-500"
             >
               <option value="all">全部类型</option>
-              <option value="assassination">暗杀</option>
-              <option value="theft">窃取</option>
-              <option value="infiltration">渗透</option>
+              <option value="assassinate">暗杀</option>
+              <option value="steal">窃取</option>
+              <option value="infiltrate">渗透</option>
             </select>
             <select
               value={difficultyFilter}
@@ -668,7 +833,7 @@ export const MissionsPage = () => {
                           <h3 className="font-display text-lg font-bold text-gold-400">{mission.title}</h3>
                           <p className="text-sm text-arcane-300 flex items-center gap-1">
                             <MapPin className="w-3 h-3" />
-                            {mission.targetLocation}
+                            {mission.target?.location}
                           </p>
                         </div>
                       </div>
@@ -683,7 +848,7 @@ export const MissionsPage = () => {
                       <div className="flex items-center gap-2">
                         <Target className="w-4 h-4 text-gold-500" />
                         <span className="text-xs text-arcane-300">成功率</span>
-                        <span className="text-xs font-mono text-gold-400 ml-auto">{mission.baseSuccessRate}%</span>
+                        <span className="text-xs font-mono text-gold-400 ml-auto">{Math.max(20, 85 - mission.difficulty * 10)}%</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Clock className="w-4 h-4 text-blue-400" />
@@ -694,26 +859,50 @@ export const MissionsPage = () => {
 
                     <div className="space-y-2 mb-4">
                       <div className="flex gap-2 text-xs">
-                        {mission.requiredSkills.stealth !== undefined && (
-                          <span className="text-arcane-400">隐匿 {mission.requiredSkills.stealth}</span>
+                        {mission.stealthRequired > 0 && (
+                          <span className="text-arcane-400">隐匿 {mission.stealthRequired}</span>
                         )}
-                        {mission.requiredSkills.disguise !== undefined && (
-                          <span className="text-blue-400">伪装 {mission.requiredSkills.disguise}</span>
+                        {mission.disguiseRequired > 0 && (
+                          <span className="text-blue-400">伪装 {mission.disguiseRequired}</span>
                         )}
-                        {mission.requiredSkills.decryption !== undefined && (
-                          <span className="text-green-400">破解 {mission.requiredSkills.decryption}</span>
+                        {mission.decryptionRequired > 0 && (
+                          <span className="text-green-400">破解 {mission.decryptionRequired}</span>
                         )}
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between border-t border-gold-500/20 pt-3">
-                      <div className="flex items-center gap-2">
-                        <Coins className="w-5 h-5 text-gold-500" />
-                        <span className="text-gold-400 font-bold">{mission.rewards.intelPoints} 积分</span>
+                    <div className="border-t border-gold-500/20 pt-3">
+                      <div className="flex flex-wrap gap-3 mb-3">
+                        <div className="flex items-center gap-1.5">
+                          <Coins className="w-4 h-4 text-gold-500" />
+                          <span className="text-sm font-mono text-gold-400">+{mission.rewards.intelPoints}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Award className="w-4 h-4 text-purple-500" />
+                          <span className="text-sm font-mono text-purple-400">+{mission.rewards.reputation}</span>
+                        </div>
+                        {mission.rewards.scrolls.length > 0 && (
+                          <div className="flex items-center gap-1.5">
+                            <ScrollText className="w-4 h-4 text-blue-500" />
+                            <div className="flex gap-1">
+                              {mission.rewards.scrolls.map((rarity, idx) => (
+                                <span
+                                  key={idx}
+                                  className={`text-xs font-medium px-1.5 py-0.5 rounded border ${rarityColors[rarity as keyof typeof rarityColors]}`}
+                                >
+                                  {rarityCn[rarity as keyof typeof rarityCn]}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <div className="flex items-center gap-1 text-gold-400">
-                        <span className="text-xs">查看详情</span>
-                        <ChevronRight className="w-4 h-4" />
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-arcane-400">预计奖励</span>
+                        <div className="flex items-center gap-1 text-gold-400">
+                          <span className="text-xs">查看详情</span>
+                          <ChevronRight className="w-4 h-4" />
+                        </div>
                       </div>
                     </div>
                   </ArcaneCard>
@@ -769,7 +958,7 @@ export const MissionsPage = () => {
                           </div>
                           <div className="flex items-center gap-4 mt-2">
                             <span className="text-sm text-arcane-300">
-                              {config?.label} · {mission?.targetLocation}
+                              {config?.label} · {mission?.target?.location}
                             </span>
                             <span className="text-sm text-arcane-400">
                               {execution.spyIds.length} 名间谍
@@ -812,6 +1001,7 @@ export const MissionsPage = () => {
       <AnimatePresence>
         {selectedMission && <MissionDetailModal />}
         {selectedExecution && <ExecutionDetailModal />}
+        {lastMissionResult && <MissionResultModal />}
       </AnimatePresence>
     </div>
   );

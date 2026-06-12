@@ -22,7 +22,7 @@ export class OrganizationService {
       baseLocation: request.baseLocation,
       reputation: 100,
       exposureRisk: 5,
-      intelPoints: 1000,
+      intelPoints: 3000,
       level: 1,
       createdAt: new Date()
     };

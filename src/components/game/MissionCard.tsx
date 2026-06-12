@@ -11,9 +11,9 @@ interface MissionCardProps {
 }
 
 const typeConfig = {
-  assassination: { icon: Skull, color: 'text-red-500', bg: 'from-red-900/30', label: '暗杀' },
-  theft: { icon: FileSearch, color: 'text-blue-400', bg: 'from-blue-900/30', label: '窃取' },
-  infiltration: { icon: Users, color: 'text-green-400', bg: 'from-green-900/30', label: '渗透' }
+  assassinate: { icon: Skull, color: 'text-red-500', bg: 'from-red-900/30', label: '暗杀' },
+  steal: { icon: FileSearch, color: 'text-blue-400', bg: 'from-blue-900/30', label: '窃取' },
+  infiltrate: { icon: Users, color: 'text-green-400', bg: 'from-green-900/30', label: '渗透' }
 };
 
 const getDifficultyColor = (difficulty: number) => {
@@ -34,9 +34,9 @@ export const MissionCard = ({ mission, onClick, disabled }: MissionCardProps) =>
   const config = typeConfig[mission.type];
   const Icon = config.icon;
   const avgSkill = Math.round((
-    (mission.requiredSkills.stealth || 0) + 
-    (mission.requiredSkills.disguise || 0) + 
-    (mission.requiredSkills.decryption || 0)
+    (mission.stealthRequired > 0 ? mission.stealthRequired : 0) + 
+    (mission.disguiseRequired > 0 ? mission.disguiseRequired : 0) + 
+    (mission.decryptionRequired > 0 ? mission.decryptionRequired : 0)
   ) / 3);
 
   return (
@@ -56,7 +56,7 @@ export const MissionCard = ({ mission, onClick, disabled }: MissionCardProps) =>
           </motion.div>
           <div>
             <h3 className="font-display text-lg font-bold text-gold-400">{mission.title}</h3>
-            <p className="text-sm text-arcane-300">{mission.targetLocation}</p>
+            <p className="text-sm text-arcane-300">{mission.target?.location}</p>
           </div>
         </div>
         <span className={`text-sm font-bold ${getDifficultyColor(mission.difficulty)}`}>
@@ -70,7 +70,7 @@ export const MissionCard = ({ mission, onClick, disabled }: MissionCardProps) =>
         <div className="flex items-center gap-2">
           <Target className="w-4 h-4 text-gold-500" />
           <span className="text-xs text-arcane-300">基础成功率</span>
-          <span className="text-xs font-mono text-gold-400 ml-auto">{mission.baseSuccessRate}%</span>
+          <span className="text-xs font-mono text-gold-400 ml-auto">{Math.max(20, 85 - mission.difficulty * 10)}%</span>
         </div>
         <div className="flex items-center gap-2">
           <Clock className="w-4 h-4 text-blue-400" />
@@ -97,9 +97,9 @@ export const MissionCard = ({ mission, onClick, disabled }: MissionCardProps) =>
           showValue={false}
         />
         <div className="flex gap-2 text-xs">
-          <span className="text-arcane-400">隐匿 {mission.requiredSkills.stealth || 0}</span>
-          <span className="text-blue-400">伪装 {mission.requiredSkills.disguise || 0}</span>
-          <span className="text-green-400">破解 {mission.requiredSkills.decryption || 0}</span>
+          <span className="text-arcane-400">隐匿 {mission.stealthRequired > 0 ? mission.stealthRequired : 0}</span>
+          <span className="text-blue-400">伪装 {mission.disguiseRequired > 0 ? mission.disguiseRequired : 0}</span>
+          <span className="text-green-400">破解 {mission.decryptionRequired > 0 ? mission.decryptionRequired : 0}</span>
         </div>
       </div>
 

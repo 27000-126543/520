@@ -115,6 +115,40 @@ class DataStore {
     return undefined;
   }
 
+  equipScroll(spyId: string, scrollId: string, orgId: string): Spy | null {
+    const spy = this.getSpy(spyId);
+    if (!spy || spy.organizationId !== orgId) return null;
+    if (spy.status === 'mission') throw new Error('间谍正在执行任务，无法更换装备');
+
+    const scroll = this.getScrolls(orgId).find(s => s.id === scrollId);
+    if (!scroll) return null;
+
+    if (spy.equippedScrolls.includes(scrollId)) {
+      throw new Error('该卷轴已装备');
+    }
+
+    const maxEquipped = spy.rarity === 'legendary' ? 3 : spy.rarity === 'epic' ? 2 : 1;
+    if (spy.equippedScrolls.length >= maxEquipped) {
+      throw new Error(`该稀有度间谍最多装备 ${maxEquipped} 个卷轴`);
+    }
+
+    return this.updateSpy(spyId, { equippedScrolls: [...spy.equippedScrolls, scrollId] }) || null;
+  }
+
+  unequipScroll(spyId: string, scrollId: string, orgId: string): Spy | null {
+    const spy = this.getSpy(spyId);
+    if (!spy || spy.organizationId !== orgId) return null;
+    if (spy.status === 'mission') throw new Error('间谍正在执行任务，无法更换装备');
+
+    if (!spy.equippedScrolls.includes(scrollId)) {
+      throw new Error('该卷轴未装备在此间谍身上');
+    }
+
+    return this.updateSpy(spyId, {
+      equippedScrolls: spy.equippedScrolls.filter(id => id !== scrollId)
+    }) || null;
+  }
+
   getMissions(): Mission[] {
     return this.missions;
   }
@@ -214,6 +248,31 @@ class DataStore {
     this.tradeHistories.push(history);
   }
 
+  getTradeHistories(limit: number = 20): TradeHistory[] {
+    return this.tradeHistories
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+      .slice(0, limit);
+  }
+
+  getTradeHistoriesByOrg(orgId: string): TradeHistory[] {
+    return this.tradeHistories
+      .filter(t => t.sellerId === orgId || t.buyerId === orgId)
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  }
+
+  getPriceTrends(): Array<{ rarity: string; prices: number[]; average: number; volume: number }> {
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const rarities: SpyRarity[] = ['common', 'rare', 'epic', 'legendary'];
+    return rarities.map(rarity => {
+      const trades = this.tradeHistories.filter(
+        t => t.itemRarity === rarity && t.timestamp.getTime() >= sevenDaysAgo
+      );
+      const prices = trades.map(t => t.price);
+      const average = prices.length > 0 ? prices.reduce((s, p) => s + p, 0) / prices.length : 0;
+      return { rarity, prices, average, volume: trades.length };
+    });
+  }
+
   getPriceSuggestion(itemRarity: string): [number, number] {
     const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
     const recent = this.tradeHistories.filter(
@@ -261,25 +320,38 @@ class DataStore {
 
   distributeMissionRewards(orgId: string, missionRewards: { scrolls: string[] }, perfection: number): IntelScroll[] {
     const grantedScrolls: IntelScroll[] = [];
-    
-    let scrollCount = 0;
-    if (perfection >= 90) scrollCount = 2 + Math.floor(Math.random() * 2);
-    else if (perfection >= 70) scrollCount = 1 + Math.floor(Math.random() * 2);
-    else if (perfection >= 50) scrollCount = Math.random() > 0.5 ? 1 : 0;
-    else scrollCount = Math.random() > 0.7 ? 1 : 0;
+    const rewardRarities = missionRewards.scrolls;
 
-    for (let i = 0; i < scrollCount; i++) {
-      let rarity: SpyRarity = 'common';
-      const roll = Math.random();
-      if (roll < 0.05 && perfection >= 70) rarity = 'legendary';
-      else if (roll < 0.20 && perfection >= 50) rarity = 'epic';
-      else if (roll < 0.50) rarity = 'rare';
+    if (rewardRarities && rewardRarities.length > 0) {
+      for (const rarityStr of rewardRarities) {
+        const rarity = rarityStr as SpyRarity;
+        const scroll = this.generateScrollForReward(orgId, rarity);
+        if (scroll) grantedScrolls.push(scroll);
+      }
+    } else {
+      let scrollCount = 0;
+      if (perfection >= 90) scrollCount = 2 + Math.floor(Math.random() * 2);
+      else if (perfection >= 70) scrollCount = 1 + Math.floor(Math.random() * 2);
+      else if (perfection >= 50) scrollCount = Math.random() > 0.5 ? 1 : 0;
+      else scrollCount = Math.random() > 0.7 ? 1 : 0;
 
-      const scroll = this.generateScrollForReward(orgId, rarity);
-      if (scroll) grantedScrolls.push(scroll);
+      for (let i = 0; i < scrollCount; i++) {
+        let rarity: SpyRarity = 'common';
+        const roll = Math.random();
+        if (roll < 0.05 && perfection >= 70) rarity = 'legendary';
+        else if (roll < 0.20 && perfection >= 50) rarity = 'epic';
+        else if (roll < 0.50) rarity = 'rare';
+
+        const scroll = this.generateScrollForReward(orgId, rarity);
+        if (scroll) grantedScrolls.push(scroll);
+      }
     }
 
     return grantedScrolls;
+  }
+
+  getAllGuilds(): Guild[] {
+    return this.guilds;
   }
 
   getGuild(id: string): Guild | undefined {
@@ -290,15 +362,52 @@ class DataStore {
     return this.guilds.find(g => g.members.includes(orgId));
   }
 
-  donateMaterial(buildingId: string, materialType: string, amount: number): boolean {
+  joinGuild(guildId: string, orgId: string): Guild | null {
+    const guild = this.getGuild(guildId);
+    if (!guild) return null;
+    if (guild.members.includes(orgId)) {
+      throw new Error('您已加入该公会');
+    }
+    guild.members.push(orgId);
+    return guild;
+  }
+
+  leaveGuild(guildId: string, orgId: string): boolean {
+    const guild = this.getGuild(guildId);
+    if (!guild) return false;
+    const idx = guild.members.indexOf(orgId);
+    if (idx === -1) return false;
+    guild.members.splice(idx, 1);
+    return true;
+  }
+
+  donateMaterial(buildingId: string, materialType: string, amount: number, orgId: string): boolean {
     for (const guild of this.guilds) {
       const building = guild.buildings.find(b => b.id === buildingId);
       if (building) {
         building.materials[materialType] = (building.materials[materialType] || 0) + amount;
+        const key = `${guild.id}:${buildingId}:${orgId}:contrib`;
+        (this as any)[key] = ((this as any)[key] || 0) + amount;
         return true;
       }
     }
     return false;
+  }
+
+  getGuildContributionRanking(guildId: string): Array<{ orgId: string; orgName: string; amount: number }> {
+    const guild = this.getGuild(guildId);
+    if (!guild) return [];
+    const results: Array<{ orgId: string; orgName: string; amount: number }> = [];
+    for (const orgId of guild.members) {
+      const org = this.getOrganization(orgId);
+      let total = 0;
+      for (const building of guild.buildings) {
+        const key = `${guild.id}:${building.id}:${orgId}:contrib`;
+        total += (this as any)[key] || 0;
+      }
+      results.push({ orgId, orgName: org?.name || '未知', amount: total });
+    }
+    return results.sort((a, b) => b.amount - a.amount);
   }
 
   upgradeBuilding(buildingId: string): boolean {

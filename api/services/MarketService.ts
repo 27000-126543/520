@@ -17,6 +17,18 @@ export class MarketService {
     return store.getListings();
   }
 
+  getTradeHistories(limit: number = 20): TradeHistory[] {
+    return store.getTradeHistories(limit);
+  }
+
+  getMyTrades(orgId: string): TradeHistory[] {
+    return store.getTradeHistoriesByOrg(orgId);
+  }
+
+  getPriceTrends(): Array<{ rarity: string; prices: number[]; average: number; volume: number }> {
+    return store.getPriceTrends();
+  }
+
   getPriceSuggestion(itemRarity: string): [number, number] {
     return store.getPriceSuggestion(itemRarity);
   }
@@ -35,6 +47,7 @@ export class MarketService {
     if (request.type === 'intel_scroll') {
       const scroll = store.getScrolls(orgId).find(s => s.id === request.itemId);
       if (!scroll) throw new Error('情报卷轴不存在');
+      if (scroll.organizationId !== orgId) throw new Error('卷轴不属于你的组织');
       itemName = scroll.name;
       itemRarity = scroll.rarity;
     } else if (request.type === 'spy_contract') {
@@ -94,6 +107,9 @@ export class MarketService {
 
     store.removeListing(listingId);
 
+    const buyerName = buyer.name;
+    const sellerName = seller.name;
+
     const history: TradeHistory = {
       id: 'trade-' + uuidv4(),
       type: listing.type,
@@ -101,14 +117,17 @@ export class MarketService {
       price: listing.price,
       timestamp: new Date(),
       sellerId: listing.sellerId,
-      buyerId: buyerOrgId
+      buyerId: buyerOrgId,
+      itemName: listing.itemName,
+      buyerName,
+      sellerName
     };
     store.addTradeHistory(history);
 
     const announcement = {
       id: Date.now().toString(),
       type: 'trade' as const,
-      message: `【${buyer.name}】以 ${listing.price.toLocaleString()} 积分购买了【${listing.itemName}】！`,
+      message: `【${buyerName}】以 ${listing.price.toLocaleString()} 积分购买了【${listing.itemName}】！`,
       timestamp: new Date(),
       data: { price: listing.price, itemName: listing.itemName }
     };

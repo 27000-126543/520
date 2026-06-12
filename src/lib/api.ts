@@ -87,6 +87,20 @@ export const spyAPI = {
       method: 'PUT',
       headers: headers(),
       body: JSON.stringify({ skill })
+    }).then(r => handleResponse<ApiResponse<Spy>>(r)),
+
+  equipScroll: (spyId: string, scrollId: string) =>
+    fetch(`${API_BASE}/spies/equip-scroll`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ spyId, scrollId })
+    }).then(r => handleResponse<ApiResponse<Spy>>(r)),
+
+  unequipScroll: (spyId: string, scrollId: string) =>
+    fetch(`${API_BASE}/spies/unequip-scroll`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ spyId, scrollId })
     }).then(r => handleResponse<ApiResponse<Spy>>(r))
 };
 
@@ -144,6 +158,21 @@ export const marketAPI = {
       headers: headers()
     }).then(r => handleResponse<ApiResponse<MarketListing[]>>(r)),
 
+  getTradeHistories: (limit?: number) =>
+    fetch(`${API_BASE}/market/histories${limit ? `?limit=${limit}` : ''}`, {
+      headers: headers()
+    }).then(r => handleResponse<ApiResponse<any[]>>(r)),
+
+  getMyTrades: () =>
+    fetch(`${API_BASE}/market/my-trades`, {
+      headers: headers()
+    }).then(r => handleResponse<ApiResponse<any[]>>(r)),
+
+  getPriceTrends: () =>
+    fetch(`${API_BASE}/market/price-trends`, {
+      headers: headers()
+    }).then(r => handleResponse<ApiResponse<Array<{ rarity: string; prices: number[]; average: number; volume: number }>>>(r)),
+
   getPriceSuggestion: (rarity: string) =>
     fetch(`${API_BASE}/market/price-suggestion/${rarity}`, {
       headers: headers()
@@ -179,6 +208,22 @@ export const guildAPI = {
     fetch(`${API_BASE}/guild`, {
       headers: headers()
     }).then(r => handleResponse<ApiResponse<Guild>>(r)),
+
+  getAllGuilds: () =>
+    fetch(`${API_BASE}/guild/list`, {
+      headers: headers()
+    }).then(r => handleResponse<ApiResponse<Guild[]>>(r)),
+
+  joinGuild: (guildId: string) =>
+    fetch(`${API_BASE}/guild/${guildId}/join`, {
+      method: 'POST',
+      headers: headers()
+    }).then(r => handleResponse<ApiResponse<Guild>>(r)),
+
+  getRanking: (guildId: string) =>
+    fetch(`${API_BASE}/guild/${guildId}/ranking`, {
+      headers: headers()
+    }).then(r => handleResponse<ApiResponse<Array<{ orgId: string; orgName: string; amount: number }>>>(r)),
 
   donate: (buildingId: string, data: DonateMaterialRequest) =>
     fetch(`${API_BASE}/guild/buildings/${buildingId}/donate`, {

@@ -67,6 +67,24 @@ export class SpyService {
 
     return store.updateSpy(spyId, { stats: newStats });
   }
+
+  equipScroll(orgId: string, spyId: string, scrollId: string): Spy {
+    const org = store.getOrganization(orgId);
+    if (!org) throw new Error('组织不存在');
+
+    const result = store.equipScroll(spyId, scrollId, orgId);
+    if (!result) throw new Error('装备失败');
+    return result;
+  }
+
+  unequipScroll(orgId: string, spyId: string, scrollId: string): Spy {
+    const org = store.getOrganization(orgId);
+    if (!org) throw new Error('组织不存在');
+
+    const result = store.unequipScroll(spyId, scrollId, orgId);
+    if (!result) throw new Error('卸下失败');
+    return result;
+  }
 }
 
 export const spyService = new SpyService();

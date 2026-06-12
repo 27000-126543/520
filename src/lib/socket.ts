@@ -36,17 +36,19 @@ export const initSocket = (token: string) => {
   });
 
   socket.on('missionComplete', (data: {
-    success: boolean; perfection: number; pointsReward: number; reputationReward: number;
+    executionId: string; missionId: string; missionTitle: string;
+    success: boolean; perfection: number; intelPoints: number; reputation: number;
     scrolls: { id: string; name: string; rarity: string }[];
-    failure: { reputationLoss: number; exposureIncrease: number } | null;
+    exposureRisk: number;
   }) => {
     const scrollList = data.scrolls.map(s => `${s.name}(${s.rarity})`).join('、') || '无';
     useGameStore.getState().addNotification(
       data.success ? 'success' : 'error',
       data.success
-        ? `任务完成！完美度 ${data.perfection.toFixed(0)}%，积分 +${data.pointsReward}，声望 +${data.reputationReward}，获得卷轴：${scrollList}`
-        : `任务失败！声望 -${data.failure?.reputationLoss || 0}，暴露风险 +${data.failure?.exposureIncrease || 0}`
+        ? `任务【${data.missionTitle}】完成！完美度 ${data.perfection.toFixed(0)}%，积分 +${data.intelPoints}，声望 +${data.reputation}，获得卷轴：${scrollList}`
+        : `任务【${data.missionTitle}】失败！声望 ${data.reputation}，暴露风险 +${data.exposureRisk}`
     );
+    useGameStore.getState().setLastMissionResult(data);
     setTimeout(() => {
       useGameStore.getState().loadExecutions();
       useGameStore.getState().loadSpies();

@@ -319,21 +319,21 @@ export const OrganizationPage = () => {
                         </span>
                       </div>
                     </div>
-                    <p className="text-xs text-arcane-400 mb-2">{scroll.effect}</p>
+                    <p className="text-xs text-arcane-400 mb-2">{scroll.description}</p>
                     <div className="flex flex-wrap gap-1">
-                      {scroll.bonus.stealth && (
+                      {scroll.skillBonus.stealth && (
                         <span className="text-xs bg-arcane-700/50 px-2 py-0.5 rounded text-arcane-300">
-                          隐匿 +{scroll.bonus.stealth}
+                          隐匿 +{scroll.skillBonus.stealth}
                         </span>
                       )}
-                      {scroll.bonus.disguise && (
+                      {scroll.skillBonus.disguise && (
                         <span className="text-xs bg-blue-700/30 px-2 py-0.5 rounded text-blue-300">
-                          伪装 +{scroll.bonus.disguise}
+                          伪装 +{scroll.skillBonus.disguise}
                         </span>
                       )}
-                      {scroll.bonus.decryption && (
+                      {scroll.skillBonus.decryption && (
                         <span className="text-xs bg-green-700/30 px-2 py-0.5 rounded text-green-300">
-                          破解 +{scroll.bonus.decryption}
+                          破解 +{scroll.skillBonus.decryption}
                         </span>
                       )}
                     </div>

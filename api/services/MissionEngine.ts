@@ -283,15 +283,15 @@ export class MissionEngine {
 
     if (this.io) {
       this.io.to(`execution:${executionId}`).emit('missionComplete', {
+        executionId,
+        missionId: mission.id,
+        missionTitle: mission.title,
         success,
         perfection,
-        pointsReward: success ? Math.floor(mission.rewards.intelPoints * (perfection / 100)) : 0,
-        reputationReward: success ? Math.floor(mission.rewards.reputation * (perfection / 100)) : -mission.penalties.reputationLoss,
+        intelPoints: success ? Math.floor(mission.rewards.intelPoints * (perfection / 100)) : 0,
+        reputation: success ? Math.floor(mission.rewards.reputation * (perfection / 100)) : -mission.penalties.reputationLoss,
         scrolls: rewardScrolls.map(s => ({ id: s.id, name: s.name, rarity: s.rarity })),
-        failure: success ? null : {
-          reputationLoss: mission.penalties.reputationLoss,
-          exposureIncrease: mission.penalties.exposureIncrease
-        }
+        exposureRisk: success ? 0 : mission.penalties.exposureIncrease
       });
     }
   }

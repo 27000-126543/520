@@ -205,7 +205,7 @@ export const mockMissions: Mission[] = [
     rewards: {
       intelPoints: 1500,
       reputation: 50,
-      scrolls: ['rare', 'uncommon']
+      scrolls: ['rare', 'common']
     },
     penalties: {
       reputationLoss: 20,
@@ -312,12 +312,25 @@ export const mockMarketListings: MarketListing[] = [
     sellerId: 'org-1',
     sellerName: '暗夜议会',
     type: 'intel_scroll',
+    itemId: 'scroll-1',
+    itemName: '隐匿术·基础',
+    itemRarity: 'common',
+    price: 800,
+    suggestedPriceRange: [500, 1000],
+    createdAt: new Date(Date.now() - 3600000),
+    expiresAt: new Date(Date.now() + 86400000)
+  },
+  {
+    id: 'listing-2',
+    sellerId: 'org-1',
+    sellerName: '暗夜议会',
+    type: 'intel_scroll',
     itemId: 'scroll-3',
     itemName: '易容秘方',
     itemRarity: 'rare',
-    price: 1200,
-    suggestedPriceRange: [1000, 1500],
-    createdAt: new Date(Date.now() - 3600000),
+    price: 2200,
+    suggestedPriceRange: [1500, 3000],
+    createdAt: new Date(Date.now() - 7200000),
     expiresAt: new Date(Date.now() + 86400000)
   }
 ];
@@ -334,19 +347,111 @@ export const mockGuilds: Guild[] = [
         type: 'intelStation',
         name: '联合情报站',
         level: 2,
+        maxLevel: 10,
         bonus: 5,
-        materials: { documents: 50, gold: 30, gems: 10 }
+        materials: { documents: 50, gold: 30, gems: 10 },
+        currentMaterials: { documents: 50, gold: 30, gems: 10 },
+        requiredMaterials: [
+          { type: 'documents', amount: 100 },
+          { type: 'gold', amount: 60 },
+          { type: 'gems', amount: 20 }
+        ]
       },
       {
         id: 'building-2',
         type: 'communicationTower',
         name: '加密通讯塔',
         level: 1,
+        maxLevel: 10,
         bonus: 3,
-        materials: { documents: 30, gold: 50, gems: 5 }
+        materials: { documents: 30, gold: 50, gems: 5 },
+        currentMaterials: { documents: 30, gold: 50, gems: 5 },
+        requiredMaterials: [
+          { type: 'documents', amount: 80 },
+          { type: 'gold', amount: 100 },
+          { type: 'gems', amount: 15 }
+        ]
       }
     ],
     createdAt: new Date('2026-03-01')
+  },
+  {
+    id: 'guild-2',
+    name: '密语者议会',
+    description: '专注于解密和密码破译的精英公会，成员多为法师和学者',
+    members: [],
+    buildings: [
+      {
+        id: 'building-3',
+        type: 'intelStation',
+        name: '秘法解密室',
+        level: 3,
+        maxLevel: 10,
+        bonus: 8,
+        materials: { documents: 100, gold: 40, gems: 20 },
+        currentMaterials: { documents: 100, gold: 40, gems: 20 },
+        requiredMaterials: [
+          { type: 'documents', amount: 150 },
+          { type: 'gold', amount: 80 },
+          { type: 'gems', amount: 40 }
+        ]
+      },
+      {
+        id: 'building-4',
+        type: 'communicationTower',
+        name: '回声塔',
+        level: 2,
+        maxLevel: 10,
+        bonus: 6,
+        materials: { documents: 60, gold: 80, gems: 15 },
+        currentMaterials: { documents: 60, gold: 80, gems: 15 },
+        requiredMaterials: [
+          { type: 'documents', amount: 120 },
+          { type: 'gold', amount: 150 },
+          { type: 'gems', amount: 30 }
+        ]
+      }
+    ],
+    createdAt: new Date('2026-02-15')
+  },
+  {
+    id: 'guild-3',
+    name: '黑夜商会',
+    description: '以交易情报和契约为主的商业公会，资源充足',
+    members: [],
+    buildings: [
+      {
+        id: 'building-5',
+        type: 'intelStation',
+        name: '情报交易所',
+        level: 1,
+        maxLevel: 10,
+        bonus: 2,
+        materials: { documents: 20, gold: 100, gems: 5 },
+        currentMaterials: { documents: 20, gold: 100, gems: 5 },
+        requiredMaterials: [
+          { type: 'documents', amount: 80 },
+          { type: 'gold', amount: 150 },
+          { type: 'gems', amount: 15 }
+        ]
+      },
+      {
+        id: 'building-6',
+        type: 'communicationTower',
+        name: '飞鸽通讯站',
+        level: 1,
+        maxLevel: 10,
+        bonus: 2,
+        materials: { documents: 40, gold: 60, gems: 3 },
+        currentMaterials: { documents: 40, gold: 60, gems: 3 },
+        requiredMaterials: [
+          { type: 'documents', amount: 60 },
+          { type: 'gold', amount: 120 },
+          { type: 'gems', amount: 10 }
+        ]
+      }
+    ],
+    createdAt: new Date('2026-04-01')
   }
 ];
 
@@ -354,15 +459,37 @@ export const mockWeeklyReport: WeeklyReport = {
   id: 'report-1',
   periodStart: new Date(Date.now() - 7 * 24 * 3600000),
   periodEnd: new Date(),
+  weekStart: new Date(Date.now() - 7 * 24 * 3600000),
+  weekEnd: new Date(),
   totalMissions: 47,
   successfulMissions: 38,
   failedMissions: 9,
   successRate: 80.85,
   totalIntelPoints: 125000,
+  totalVolume: 58000,
   regionActivity: [
     { region: '幽暗城', missions: 18, successRate: 88.9 },
     { region: '边境要塞', missions: 15, successRate: 73.3 },
     { region: '王都', missions: 14, successRate: 78.6 }
+  ],
+  regionHeatmap: [
+    { region: '幽暗城', missionCount: 18, successRate: 88.9 },
+    { region: '边境要塞', missionCount: 15, successRate: 73.3 },
+    { region: '王都', missionCount: 14, successRate: 78.6 }
+  ],
+  successRateTrend: [
+    { date: '周一', rate: 78, missions: 7 },
+    { date: '周二', rate: 82, missions: 8 },
+    { date: '周三', rate: 85, missions: 6 },
+    { date: '周四', rate: 79, missions: 9 },
+    { date: '周五', rate: 88, missions: 7 },
+    { date: '周六', rate: 81, missions: 5 },
+    { date: '周日', rate: 84, missions: 5 }
+  ],
+  priceTrend: [
+    { rarity: 'common', prices: [180, 200, 190, 210, 205, 220, 230], average: 205 },
+    { rarity: 'rare', prices: [900, 950, 1000, 980, 1100, 1050, 1120], average: 1014 },
+    { rarity: 'epic', prices: [3000, 3200, 3100, 3400, 3300, 3500, 3600], average: 3300 }
   ],
   priceTrends: [
     { rarity: 'common', prices: [180, 200, 190, 210, 205, 220, 230], average: 205 },
@@ -372,15 +499,19 @@ export const mockWeeklyReport: WeeklyReport = {
   topPerformingSpies: [
     { spyId: 'spy-1', spyName: '艾琳·暗影', missionsCompleted: 12, successRate: 92 }
   ],
+  topOrganizations: [
+    { orgId: 'org-1', orgName: '暗夜议会', points: 85000, successRate: 88 },
+    { orgId: 'org-2', orgName: '密语者', points: 72000, successRate: 82 }
+  ],
   riskAssessment: '低风险：当前暴露率稳定在15%，建议继续执行中高难度任务以获取更多收益。'
 };
 
 export const mockRankings: RankingEntry[] = [
-  { rank: 1, name: '暗夜议会', value: 85000, category: 'intel' },
-  { rank: 2, name: '密语者', value: 72000, category: 'intel' },
-  { rank: 3, name: '暗影步', value: 65400, category: 'intel' },
-  { rank: 4, name: '黑玫瑰', value: 58000, category: 'intel' },
-  { rank: 5, name: '猎鹰', value: 51200, category: 'intel' }
+  { rank: 1, name: '暗夜议会', value: 85000, category: 'intel', playerId: 'org-1', playerName: '暗夜议会', change: 2 },
+  { rank: 2, name: '密语者', value: 72000, category: 'intel', playerId: 'org-2', playerName: '密语者', change: -1 },
+  { rank: 3, name: '暗影步', value: 65400, category: 'intel', playerId: 'org-3', playerName: '暗影步', change: 1 },
+  { rank: 4, name: '黑玫瑰', value: 58000, category: 'intel', playerId: 'org-4', playerName: '黑玫瑰', change: 0 },
+  { rank: 5, name: '猎鹰', value: 51200, category: 'intel', playerId: 'org-5', playerName: '猎鹰', change: 3 }
 ];
 
 export const mockAnnouncements: Announcement[] = [

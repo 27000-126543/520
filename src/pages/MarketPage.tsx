@@ -9,10 +9,12 @@ import type { MarketListing, IntelScroll, ListingType } from '../../shared/types
 import {
   ShoppingBag, ScrollText, Users, Coins, Tag, X, Plus,
   Filter, TrendingUp, TrendingDown, Clock, CheckCircle,
-  AlertCircle, ChevronDown, ChevronUp, Eye
+  AlertCircle, ChevronDown, ChevronUp, Eye, History,
+  BarChart3, ArrowRightLeft, Award
 } from 'lucide-react';
 
 type MarketTab = 'all' | 'intel_scroll' | 'spy_contract' | 'my';
+type MarketSubView = 'listings' | 'histories' | 'trends' | 'my-trades';
 
 const rarityColors = {
   common: 'border-gray-500 text-gray-400',
@@ -28,14 +30,17 @@ const rarityBg = {
   legendary: 'from-amber-900/30'
 };
 
+const rarityCn = { common: '普通', rare: '稀有', epic: '史诗', legendary: '传说' };
+
 export const MarketPage = () => {
   const { user, organization, isAuthenticated } = useAuthStore();
   const {
-    listings, scrolls, isLoading,
+    listings, scrolls, isLoading, tradeHistories, myTrades, priceTrends,
     loadMarket, loadScrolls, buyListing, createListing
   } = useGameStore();
 
   const [activeTab, setActiveTab] = useState<MarketTab>('all');
+  const [subView, setSubView] = useState<MarketSubView>('listings');
   const [showSellModal, setShowSellModal] = useState(false);
   const [sellType, setSellType] = useState<ListingType>('intel_scroll');
   const [selectedItem, setSelectedItem] = useState<string>('');
@@ -56,14 +61,21 @@ export const MarketPage = () => {
     if (selectedItem && sellType === 'intel_scroll') {
       const scroll = scrolls.find(s => s.id === selectedItem);
       if (scroll) {
-        const basePrice = scroll.rarity === 'legendary' ? 1000 :
-                         scroll.rarity === 'epic' ? 500 :
-                         scroll.rarity === 'rare' ? 200 : 50;
-        setSuggestedRange([Math.round(basePrice * 0.8), Math.round(basePrice * 1.2)]);
-        setPrice(basePrice);
+        const trend = priceTrends.find(t => t.rarity === scroll.rarity);
+        if (trend && trend.volume > 0) {
+          const avg = trend.average;
+          setSuggestedRange([Math.round(avg * 0.85), Math.round(avg * 1.15)]);
+          setPrice(Math.round(avg));
+        } else {
+          const basePrice = scroll.rarity === 'legendary' ? 10000 :
+                           scroll.rarity === 'epic' ? 3000 :
+                           scroll.rarity === 'rare' ? 1500 : 500;
+          setSuggestedRange([Math.round(basePrice * 0.85), Math.round(basePrice * 1.15)]);
+          setPrice(basePrice);
+        }
       }
     }
-  }, [selectedItem, sellType, scrolls]);
+  }, [selectedItem, sellType, scrolls, priceTrends]);
 
   const filteredListings = listings.filter(listing => {
     if (activeTab === 'all') return true;
@@ -204,11 +216,10 @@ export const MarketPage = () => {
                               <div className="flex items-center gap-2">
                                 <p className="font-medium text-gold-300">{scroll.name}</p>
                                 <span className={`text-xs px-2 py-0.5 rounded-full border ${rarityColors[scroll.rarity]}`}>
-                                  {scroll.rarity === 'common' ? '普通' : scroll.rarity === 'rare' ? '稀有' :
-                                   scroll.rarity === 'epic' ? '史诗' : '传说'}
+                                  {rarityCn[scroll.rarity as keyof typeof rarityCn]}
                                 </span>
                               </div>
-                              <p className="text-xs text-arcane-400">{scroll.effect}</p>
+                              <p className="text-xs text-arcane-400">{scroll.description}</p>
                             </div>
                             {selectedItem === scroll.id && (
                               <CheckCircle className="w-5 h-5 text-gold-500" />
@@ -315,8 +326,7 @@ export const MarketPage = () => {
               <h3 className="font-medium text-gold-300">{listing.itemName}</h3>
               <div className="flex items-center gap-2">
                 <span className={`text-xs px-2 py-0.5 rounded-full border ${rarityColors[listing.itemRarity as keyof typeof rarityColors]}`}>
-                  {listing.itemRarity === 'common' ? '普通' : listing.itemRarity === 'rare' ? '稀有' :
-                   listing.itemRarity === 'epic' ? '史诗' : '传说'}
+                  {rarityCn[listing.itemRarity as keyof typeof rarityCn]}
                 </span>
                 <span className="text-xs text-arcane-400">
                   {listing.type === 'intel_scroll' ? '卷轴' : '契约'}
@@ -420,9 +430,9 @@ export const MarketPage = () => {
           {(['all', 'intel_scroll', 'spy_contract', 'my'] as MarketTab[]).map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => { setActiveTab(tab); setSubView('listings'); }}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
-                activeTab === tab
+                activeTab === tab && subView === 'listings'
                   ? 'bg-gradient-to-r from-gold-500 to-gold-600 text-arcane-900'
                   : 'text-arcane-400 hover:text-gold-400'
               }`}
@@ -448,27 +458,212 @@ export const MarketPage = () => {
         </div>
       </div>
 
-      {filteredListings.length > 0 ? (
-        <div className="grid grid-cols-4 gap-4">
-          {filteredListings.map((listing) => (
-            <ListingCard key={listing.id} listing={listing} />
-          ))}
-        </div>
-      ) : (
-        <ArcaneCard className="p-12 text-center">
-          <ShoppingBag className="w-16 h-16 mx-auto mb-4 text-arcane-500 opacity-50" />
-          <h3 className="text-xl font-bold text-gold-400 mb-2">
-            {activeTab === 'my' ? '暂无上架商品' : '暂无商品'}
-          </h3>
-          <p className="text-arcane-400 mb-6">
-            {activeTab === 'my' ? '点击右上角按钮上架你的商品' : '请稍后再来查看新的商品'}
-          </p>
-          {activeTab === 'my' && (
-            <ArcaneButton onClick={() => setShowSellModal(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              立即上架
-            </ArcaneButton>
+      <div className="flex gap-2 mb-2">
+        {[
+          { id: 'listings', label: '当前上架', icon: ShoppingBag },
+          { id: 'histories', label: '最近成交', icon: History },
+          { id: 'my-trades', label: '我的交易', icon: ArrowRightLeft },
+          { id: 'trends', label: '价格走势', icon: BarChart3 }
+        ].map(v => (
+          <button
+            key={v.id}
+            onClick={() => setSubView(v.id as MarketSubView)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+              subView === v.id
+                ? 'bg-arcane-700/50 text-gold-400 border border-gold-500/30'
+                : 'text-arcane-400 hover:text-gold-400'
+            }`}
+          >
+            <v.icon className="w-4 h-4" />
+            {v.label}
+          </button>
+        ))}
+      </div>
+
+      {subView === 'listings' && (
+        <>
+          {filteredListings.length > 0 ? (
+            <div className="grid grid-cols-4 gap-4">
+              {filteredListings.map((listing) => (
+                <ListingCard key={listing.id} listing={listing} />
+              ))}
+            </div>
+          ) : (
+            <ArcaneCard className="p-12 text-center">
+              <ShoppingBag className="w-16 h-16 mx-auto mb-4 text-arcane-500 opacity-50" />
+              <h3 className="text-xl font-bold text-gold-400 mb-2">
+                {activeTab === 'my' ? '暂无上架商品' : '暂无商品'}
+              </h3>
+              <p className="text-arcane-400 mb-6">
+                {activeTab === 'my' ? '点击右上角按钮上架你的商品' : '请稍后再来查看新的商品'}
+              </p>
+              {activeTab === 'my' && (
+                <ArcaneButton onClick={() => setShowSellModal(true)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  立即上架
+                </ArcaneButton>
+              )}
+            </ArcaneCard>
           )}
+        </>
+      )}
+
+      {subView === 'histories' && (
+        <ArcaneCard className="p-6">
+          <h2 className="font-display text-xl font-bold text-gold-400 mb-4 flex items-center gap-2">
+            <History className="w-5 h-5" />
+            最近成交记录
+          </h2>
+          {tradeHistories.length > 0 ? (
+            <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+              {tradeHistories.map((h: any) => (
+                <motion.div
+                  key={h.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="flex items-center justify-between p-3 bg-arcane-800/30 rounded-lg border border-arcane-600/30"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center border ${rarityColors[h.itemRarity as keyof typeof rarityColors]}`}>
+                      {h.type === 'intel_scroll' ? (
+                        <ScrollText className={`w-5 h-5 ${rarityColors[h.itemRarity as keyof typeof rarityColors].split(' ')[1]}`} />
+                      ) : (
+                        <Users className={`w-5 h-5 ${rarityColors[h.itemRarity as keyof typeof rarityColors].split(' ')[1]}`} />
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-gold-300 font-medium">{h.itemName}</p>
+                      <p className="text-xs text-arcane-400">
+                        <span className="text-blue-400">{h.buyerName}</span> 从 <span className="text-amber-400">{h.sellerName}</span> 购买
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-mono text-lg font-bold text-gold-400">
+                      {h.price.toLocaleString()} 积分
+                    </p>
+                    <p className="text-xs text-arcane-500">
+                      {new Date(h.timestamp).toLocaleString('zh-CN')}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-arcane-400">
+              <History className="w-12 h-12 mx-auto mb-3 opacity-50" />
+              <p>暂无成交记录</p>
+            </div>
+          )}
+        </ArcaneCard>
+      )}
+
+      {subView === 'my-trades' && (
+        <ArcaneCard className="p-6">
+          <h2 className="font-display text-xl font-bold text-gold-400 mb-4 flex items-center gap-2">
+            <ArrowRightLeft className="w-5 h-5" />
+            我的交易记录
+          </h2>
+          {myTrades.length > 0 ? (
+            <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+              {myTrades.map((h: any) => {
+                const isBuyer = h.buyerId === organization?.id;
+                const isSeller = h.sellerId === organization?.id;
+                return (
+                  <motion.div
+                    key={h.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className={`flex items-center justify-between p-3 rounded-lg border ${
+                      isBuyer
+                        ? 'bg-blue-900/20 border-blue-500/30'
+                        : 'bg-green-900/20 border-green-500/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center border ${
+                        isBuyer ? 'border-blue-400 bg-blue-900/30' : 'border-green-400 bg-green-900/30'
+                      }`}>
+                        {isBuyer ? (
+                          <ShoppingBag className="w-5 h-5 text-blue-400" />
+                        ) : (
+                          <Coins className="w-5 h-5 text-green-400" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-gold-300 font-medium">{h.itemName}</p>
+                        <p className="text-xs text-arcane-400">
+                          {isBuyer
+                            ? `我从 ${h.sellerName} 购买`
+                            : `我卖给 ${h.buyerName}`}
+                          <span className="ml-2 text-xs">
+                            <span className={`px-2 py-0.5 rounded-full border ${rarityColors[h.itemRarity as keyof typeof rarityColors]}`}>
+                              {rarityCn[h.itemRarity as keyof typeof rarityCn]}
+                            </span>
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className={`font-mono text-lg font-bold ${isBuyer ? 'text-red-400' : 'text-green-400'}`}>
+                        {isBuyer ? '-' : '+'}{h.price.toLocaleString()} 积分
+                      </p>
+                      <p className="text-xs text-arcane-500">
+                        {new Date(h.timestamp).toLocaleString('zh-CN')}
+                      </p>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-arcane-400">
+              <ArrowRightLeft className="w-12 h-12 mx-auto mb-3 opacity-50" />
+              <p>暂无交易记录</p>
+            </div>
+          )}
+        </ArcaneCard>
+      )}
+
+      {subView === 'trends' && (
+        <ArcaneCard className="p-6">
+          <h2 className="font-display text-xl font-bold text-gold-400 mb-6 flex items-center gap-2">
+            <BarChart3 className="w-5 h-5" />
+            近7天成交价格走势
+          </h2>
+          <div className="grid grid-cols-2 gap-4">
+            {priceTrends.map(trend => (
+              <div key={trend.rarity} className="p-4 bg-arcane-800/30 rounded-lg border border-arcane-600/30">
+                <div className="flex items-center justify-between mb-3">
+                  <span className={`px-3 py-1 rounded-full border text-sm font-medium ${rarityColors[trend.rarity as keyof typeof rarityColors]}`}>
+                    {rarityCn[trend.rarity as keyof typeof rarityCn]}
+                  </span>
+                  <span className="text-sm text-arcane-400">成交量 {trend.volume}</span>
+                </div>
+                <div className="mb-3">
+                  <p className="text-xs text-arcane-400 mb-1">成交均价</p>
+                  <p className="font-mono text-2xl font-bold text-gold-400">
+                    {trend.volume > 0 ? Math.round(trend.average).toLocaleString() : '-'}
+                  </p>
+                </div>
+                {trend.prices.length > 0 && (
+                  <div className="h-16 flex items-end gap-1">
+                    {trend.prices.slice(-10).map((p, i) => (
+                      <motion.div
+                        key={i}
+                        initial={{ height: 0 }}
+                        animate={{ height: `${Math.max(10, (p / Math.max(...trend.prices)) * 100)}%` }}
+                        className="flex-1 bg-gradient-to-t from-gold-600 to-gold-400 rounded-t"
+                      />
+                    ))}
+                  </div>
+                )}
+                {trend.prices.length === 0 && (
+                  <p className="text-sm text-arcane-500 italic">暂无成交数据</p>
+                )}
+              </div>
+            ))}
+          </div>
         </ArcaneCard>
       )}
 

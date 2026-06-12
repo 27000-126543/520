@@ -236,9 +236,9 @@ export const DashboardPage = () => {
                 >
                   <div className="arcane-card p-4 h-full">
                     <div className="flex items-center gap-2 mb-2">
-                      {mission.type === 'assassination' && <AlertTriangle className="w-4 h-4 text-blood-500" />}
-                      {mission.type === 'theft' && <Eye className="w-4 h-4 text-blue-500" />}
-                      {mission.type === 'infiltration' && <Users className="w-4 h-4 text-green-500" />}
+                      {mission.type === 'assassinate' && <AlertTriangle className="w-4 h-4 text-blood-500" />}
+                      {mission.type === 'steal' && <Eye className="w-4 h-4 text-blue-500" />}
+                      {mission.type === 'infiltrate' && <Users className="w-4 h-4 text-green-500" />}
                       <span className="text-sm font-medium text-gold-400">{mission.title}</span>
                     </div>
                     <p className="text-xs text-arcane-400 line-clamp-2 mb-2">{mission.description}</p>
